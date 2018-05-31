@@ -73,7 +73,7 @@ class Sinc_Base(models.Model):
             logging.warn(self.res_model())
             logging.warn(obj)
             logging.warn(obj_dict)
-            
+
             nuevo_obj_destino_id = conexion['models'].execute_kw(conexion['database'], conexion['uid'], conexion['password'], self.res_model(), 'create', [obj_dict])
         else:
             conexion['models'].execute_kw(conexion['database'], conexion['uid'], conexion['password'], self.res_model(), 'write', [[obj_id[0]], obj_dict])
@@ -135,7 +135,7 @@ class Sinc_PDV_Diarios(models.Model):
 
     def campos(self):
         dict = {}
-        dict['estandar'] = ['sinc_id', 'name', 'type', 'code', 'ultimo_numero_factura', 'usuario_gface', 'clave_gface', 'tipo_documento_gface', 'serie_documento_gface', 'serie_gface', 'numero_resolucion_gface', 'fecha_resolucion_gface', 'rango_inicial_gface', 'rango_final_gface', 'numero_establecimiento_gface', 'dispositivo_gface']
+        dict['estandar'] = ['sinc_id', 'name', 'type', 'code', 'ultimo_numero_factura', 'requiere_resolucion', 'usuario_gface', 'clave_gface', 'tipo_documento_gface', 'serie_documento_gface', 'serie_gface', 'numero_resolucion_gface', 'fecha_resolucion_gface', 'rango_inicial_gface', 'rango_final_gface', 'numero_establecimiento_gface', 'dispositivo_gface', 'nombre_establecimiento_gface']
         dict['m2o'] = []
 #        dict['o2m'] = []
 #        dict['m2m'] = []
@@ -303,7 +303,7 @@ class Sinc_PDV(models.Model):
             iface_start_categ_id = self._buscar(conexion, 'pos.category', [['sequence', '=', obj.iface_start_categ_id.sequence]])
             if iface_start_categ_id:
                 obj_dict['iface_start_categ_id'] = iface_start_categ_id[0]
-                
+
 #            categoria_id = self._buscar(conexion, 'product.category', [['sinc_id', '=', obj.sinc_id.sinc_id]])
 #            if categoria_id:
 #                obj_dict['categoria_id'] = categoria_id[0]
@@ -316,7 +316,7 @@ class Sinc_PDV(models.Model):
                 m2m_campo = 'journal_ids'
                 m2m_filtro_existe = 'code'
                 obj_dict['journal_ids'] = self._preparar_m2m(conexion, m2m_res_model, m2m_obj, m2m_campo, m2m_filtro_existe)
-                
+
                 m2m_res_model = 'product.category'
                 m2m_obj = obj.categorias_id
                 m2m_campo = 'categorias_id'
@@ -378,7 +378,7 @@ class Sinc_PDV(models.Model):
             obj_dict_template = {}
             obj_dict = self._preparar_diccionario2(obj, campos)
             if obj.pos_categ_id:
-            
+
                 pos_categ_id = self._buscar(conexion, 'pos.category', [['sequence', '=', obj.pos_categ_id.sequence]])
                 if pos_categ_id:
                     obj_dict['pos_categ_id'] = pos_categ_id[0]
@@ -386,7 +386,7 @@ class Sinc_PDV(models.Model):
                 categ_id = self._buscar(conexion, 'product.category', [['sinc_id', '=', obj.categ_id.sinc_id]])
                 if categ_id:
                     obj_dict_template['categ_id'] = categ_id[0]
-                    
+
             obj_id = self._buscar(conexion, res_model, [[filtro_existe, '=', obj[filtro_existe]]])
             logging.warn(obj_id)
             if not obj_id:
@@ -428,7 +428,7 @@ class Sinc_PDV(models.Model):
                 obj_dict['supplier_taxes_id'] = self._preparar_m2m(conexion, m2m_res_model, m2m_obj, m2m_campo, m2m_filtro_existe, m2m_ids_borrar)
 
                 conexion['models'].execute_kw(conexion['database'], conexion['uid'], conexion['password'], res_model, 'write', [[obj_id[0]], obj_dict])
-                
+
                 product_tmpl_id = registro['product_tmpl_id'][0]
                 obj_dict_template['image'] = obj.image_small
                 logging.warn(product_tmpl_id)
@@ -491,35 +491,36 @@ class Sinc_PDV(models.Model):
             product_tmpl_id = self._buscar(conexion, 'product.product', [['default_code', '=', obj.product_tmpl_id.default_code]])
             if product_tmpl_id:
                 obj_dict['product_tmpl_id'] = product_tmpl_id[0]
-            obj_id = self._buscar(conexion, res_model, [[filtro_existe, '=', obj[filtro_existe]]])
-            if not obj_id:
-                bom_line_ids = []
-                for line in obj.bom_line_ids:
-                    product_id = self._buscar(conexion, 'product.product', [['default_code', '=', line.product_id.default_code]])
-                    logging.getLogger('PRODUCT_ID ').warn(product_id)
-                    if product_id:
-                        bom_line_ids.append((0, 0, {
-                            'product_id': product_id[0],
-                            'product_qty': line.product_qty,
-                        }))
-                obj_dict['bom_line_ids'] = bom_line_ids
-                logging.warn(obj_dict)
-                obj_id = conexion['models'].execute_kw(conexion['database'], conexion['uid'], conexion['password'], res_model, 'create', [obj_dict])
-            else:
-                registro = self._leer(conexion, 'mrp.bom', [obj_id[0]])[0]
-                conexion['models'].execute_kw(conexion['database'], conexion['uid'], conexion['password'], 'mrp.bom.line', 'unlink', [registro['bom_line_ids']])
 
-                bom_line_ids = []
-                for line in obj.bom_line_ids:
-                    product_id = self._buscar(conexion, 'product.product', [['default_code', '=', line.product_id.default_code]])
-                    if product_id:
-                        bom_line_ids.append((0, 0, {
-                            'product_id': product_id[0],
-                            'product_qty': line.product_qty,
-                        }))
-                obj_dict['bom_line_ids'] = bom_line_ids
+                obj_id = self._buscar(conexion, res_model, [[filtro_existe, '=', obj[filtro_existe]]])
+                if not obj_id:
+                    bom_line_ids = []
+                    for line in obj.bom_line_ids:
+                        product_id = self._buscar(conexion, 'product.product', [['default_code', '=', line.product_id.default_code]])
+                        logging.getLogger('PRODUCT_ID ').warn(product_id)
+                        if product_id:
+                            bom_line_ids.append((0, 0, {
+                                'product_id': product_id[0],
+                                'product_qty': line.product_qty,
+                            }))
+                    obj_dict['bom_line_ids'] = bom_line_ids
+                    logging.warn(obj_dict)
+                    obj_id = conexion['models'].execute_kw(conexion['database'], conexion['uid'], conexion['password'], res_model, 'create', [obj_dict])
+                else:
+                    registro = self._leer(conexion, 'mrp.bom', [obj_id[0]])[0]
+                    conexion['models'].execute_kw(conexion['database'], conexion['uid'], conexion['password'], 'mrp.bom.line', 'unlink', [registro['bom_line_ids']])
 
-                conexion['models'].execute_kw(conexion['database'], conexion['uid'], conexion['password'], res_model, 'write', [[obj_id[0]], obj_dict])
+                    bom_line_ids = []
+                    for line in obj.bom_line_ids:
+                        product_id = self._buscar(conexion, 'product.product', [['default_code', '=', line.product_id.default_code]])
+                        if product_id:
+                            bom_line_ids.append((0, 0, {
+                                'product_id': product_id[0],
+                                'product_qty': line.product_qty,
+                            }))
+                    obj_dict['bom_line_ids'] = bom_line_ids
+
+                    conexion['models'].execute_kw(conexion['database'], conexion['uid'], conexion['password'], res_model, 'write', [[obj_id[0]], obj_dict])
 
     @api.multi
     def _ajuste_inicial(self, conexion):
@@ -751,7 +752,7 @@ class Sinc_PDV_in(models.Model):
                     logging.warn(nombre_primera_factura + ' - ' + nombre_ultima_factura)
                     factura_origen = obj.invoice_id
                     factura_origen.write({'name': nombre_primera_factura + ' - ' + nombre_ultima_factura})
-                    
+
                     obj.invoice_id.sudo().action_invoice_open()
                     obj.account_move = obj.invoice_id.move_id
 
