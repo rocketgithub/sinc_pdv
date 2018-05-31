@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+        <record id="sinc_pdv.inherit_view_general_configuration" model="ir.ui.view">
+            <field name="name">General Settings</field>
+            <field name="model">base.config.settings</field>
+            <field name="inherit_id" ref="base_setup.view_general_configuration"/>
+            <field name="arch" type="xml">
+                <group name="report" position="after">
+                    <group name="sincronizacion_pdv" string="Sincronizacion PDV">
+                        <group>
+                            <field name="url"/>
+                            <field name="database"/>
+                            <field name="username"/>
+                            <field name="password"/>
+                            <button string="Sincronización inicial" type="object" name="sincronizacion_inicial" class="oe_highlight"/>
+                            <button string="Sincronización diaria" type="object" name="sincronizacion_diaria" class="oe_highlight"/>
+                        </group>
+                    </group>
+                </group>
+            </field>
+        </record>
+</odoo>
