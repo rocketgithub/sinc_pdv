@@ -404,6 +404,13 @@ class Sinc_PDV(models.Model):
                 obj_dict['supplier_taxes_id'] = self._preparar_m2m(conexion, m2m_res_model, m2m_obj, m2m_campo, m2m_filtro_existe)
 
                 obj_id = conexion['models'].execute_kw(conexion['database'], conexion['uid'], conexion['password'], res_model, 'create', [obj_dict])
+
+                m2m_res_model = 'pos_gt.extra'
+                m2m_obj = obj.extras_id
+                m2m_campo = 'extras_id'
+                m2m_filtro_existe = 'name'
+                obj_dict_template['supplier_taxes_id'] = self._preparar_m2m(conexion, m2m_res_model, m2m_obj, m2m_campo, m2m_filtro_existe)
+
                 registro = self._leer(conexion, res_model, [obj_id])[0]
                 product_tmpl_id = registro['product_tmpl_id'][0]
                 obj_dict_template['image'] = obj.image_small
@@ -429,9 +436,15 @@ class Sinc_PDV(models.Model):
 
                 conexion['models'].execute_kw(conexion['database'], conexion['uid'], conexion['password'], res_model, 'write', [[obj_id[0]], obj_dict])
 
+                m2m_res_model = 'pos_gt.extra'
+                m2m_obj = obj.extras_id
+                m2m_campo = 'extras_id'
+                m2m_filtro_existe = 'name'
+                m2m_ids_borrar = registro['extras_id']
+                obj_dict_template['extras_id'] = self._preparar_m2m(conexion, m2m_res_model, m2m_obj, m2m_campo, m2m_filtro_existe, m2m_ids_borrar)
+
                 product_tmpl_id = registro['product_tmpl_id'][0]
                 obj_dict_template['image'] = obj.image_small
-                logging.warn(product_tmpl_id)
                 logging.warn(obj_dict_template)
                 conexion['models'].execute_kw(conexion['database'], conexion['uid'], conexion['password'], 'product.template', 'write', [[product_tmpl_id], obj_dict_template])
 
