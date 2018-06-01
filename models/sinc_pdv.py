@@ -377,15 +377,14 @@ class Sinc_PDV(models.Model):
         for obj in self.env[res_model].search(filtro_search, order='id asc'):
             obj_dict_template = {}
             obj_dict = self._preparar_diccionario2(obj, campos)
-            if obj.pos_categ_id:
+            categ_id = self._buscar(conexion, 'product.category', [['sinc_id', '=', obj.categ_id.sinc_id]])
+            if categ_id:
+                obj_dict_template['categ_id'] = categ_id[0]
 
+            if obj.pos_categ_id:
                 pos_categ_id = self._buscar(conexion, 'pos.category', [['sequence', '=', obj.pos_categ_id.sequence]])
                 if pos_categ_id:
                     obj_dict['pos_categ_id'] = pos_categ_id[0]
-
-                categ_id = self._buscar(conexion, 'product.category', [['sinc_id', '=', obj.categ_id.sinc_id]])
-                if categ_id:
-                    obj_dict_template['categ_id'] = categ_id[0]
 
             obj_id = self._buscar(conexion, res_model, [[filtro_existe, '=', obj[filtro_existe]]])
             logging.warn(obj_id)
@@ -609,31 +608,31 @@ class Sinc_PDV(models.Model):
         else:
             logging.warn('INICIO')
             logging.warn('Transfiriendo ubicaciones')
-            self._ubicaciones(conexion)
-            logging.warn('Transfiriendo pos_sat_resoluciones')
-            self._pos_sat_resolucion(conexion)
-            logging.warn('Transfiriendo diarios')
-            self._diarios(conexion)
-            logging.warn('Transfiriendo categorias de producto')
-            self._categorias_producto(conexion)
-            self._categorias_producto(conexion)
-            logging.warn('Transfiriendo categorias de pdv')
-            self._categorias_pdv(conexion)
-            self._categorias_pdv(conexion)
-            logging.warn('Transfiriendo pdv')
-            self._pdv(conexion)
-            logging.warn('Transfiriendo usuarios')
-            self._usuarios(conexion)
+            # self._ubicaciones(conexion)
+            # logging.warn('Transfiriendo pos_sat_resoluciones')
+            # self._pos_sat_resolucion(conexion)
+            # logging.warn('Transfiriendo diarios')
+            # self._diarios(conexion)
+            # logging.warn('Transfiriendo categorias de producto')
+            # self._categorias_producto(conexion)
+            # self._categorias_producto(conexion)
+            # logging.warn('Transfiriendo categorias de pdv')
+            # self._categorias_pdv(conexion)
+            # self._categorias_pdv(conexion)
+            # logging.warn('Transfiriendo pdv')
+            # self._pdv(conexion)
+            # logging.warn('Transfiriendo usuarios')
+            # self._usuarios(conexion)
+            # logging.warn('Transfiriendo productos')
+            # self._productos(conexion)
+            # logging.warn('Transfiriendo pos_gt_extra')
+            # self._pos_gt_extra(conexion)
             logging.warn('Transfiriendo productos')
             self._productos(conexion)
-            logging.warn('Transfiriendo pos_gt_extra')
-            self._pos_gt_extra(conexion)
-            logging.warn('Transfiriendo productos')
-            self._productos(conexion)
-            logging.warn('Transfiriendo lista de materiales')
-            self._lista_materiales(conexion)
-            logging.warn('Creando ajuste inicial')
-            self._ajuste_inicial(conexion)
+            # logging.warn('Transfiriendo lista de materiales')
+            # self._lista_materiales(conexion)
+            # logging.warn('Creando ajuste inicial')
+            # self._ajuste_inicial(conexion)
             logging.warn('FIN!!!')
 
 class Sinc_PDV_in(models.Model):
