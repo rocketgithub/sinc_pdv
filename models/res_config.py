@@ -7,7 +7,7 @@ class BaseConfigSettings(models.TransientModel):
 
     _inherit = 'res.config.settings'
 
-    url = fields.Char('URL', default='http://50.116.38.242')
+    url = fields.Char('URL', default='http://66.228.61.148')
     database = fields.Char('Base de datos destino', default='pruebas_destino')
     username = fields.Char('Usuario', default='admin')
     password = fields.Char('Contraseña', default='guateburgersa')
