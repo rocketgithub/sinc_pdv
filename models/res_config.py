@@ -12,35 +12,71 @@ class BaseConfigSettings(models.TransientModel):
     username = fields.Char('Usuario', default='admin')
     password = fields.Char('Contraseña', default='guateburgersa')
 
+    @api.model
+    def get_default_url(self, fields):
+        url = self.env["ir.config_parameter"].get_param("sinc.url", default=None)
+        return {'url': url or False}
+
+    @api.multi
+    def set_url(self):
+        for record in self:
+            self.env['ir.config_parameter'].set_param("sinc.url", record.url or '')
+
+    @api.model
+    def get_default_database(self, fields):
+        database = self.env["ir.config_parameter"].get_param("sinc.database", default=None)
+        return {'database': database or False}
+
+    @api.multi
+    def set_database(self):
+        for record in self:
+            self.env['ir.config_parameter'].set_param("sinc.database", record.database or '')
+
+    @api.model
+    def get_default_username(self, fields):
+        username = self.env["ir.config_parameter"].get_param("sinc.username", default=None)
+        return {'username': username or False}
+
+    @api.multi
+    def set_username(self):
+        for record in self:
+            self.env['ir.config_parameter'].set_param("sinc.username", record.username or '')
+
+    @api.model
+    def get_default_password(self, fields):
+        password = self.env["ir.config_parameter"].get_param("sinc.password", default=None)
+        return {'password': password or False}
+
+    @api.multi
+    def set_password(self):
+        for record in self:
+            self.env['ir.config_parameter'].set_param("sinc.password", record.password or '')
+
+    @api.model
     def datos_conexion(self):
-        for config in self:
-            dict = {}
-            dict['url'] = config.url
-            dict['database'] = config.database
-            dict['username'] = config.username
-            dict['password'] = config.password
+        dict = {}
+        dict['url'] = self.env["ir.config_parameter"].get_param("sinc.url")
+        dict['database'] = self.env["ir.config_parameter"].get_param("sinc.database")
+        dict['username'] = self.env["ir.config_parameter"].get_param("sinc.username")
+        dict['password'] = self.env["ir.config_parameter"].get_param("sinc.password")
         return dict
 
     def sincronizacion_inicial(self):
-        for config in self:
-            sinc_obj = self.env['sinc_pdv.out']
-            sinc_obj.iniciar(self.datos_conexion())
-            logging.warn(config.url)
+        sinc_obj = self.env['sinc_pdv.out']
+        sinc_obj.iniciar(self.datos_conexion())
+        logging.warn(config.url)
 
     def sincronizacion_diaria(self):
-        for config in self:
-            sinc_obj = self.env['sinc_pdv.in']
-            sinc_obj.iniciar(self.datos_conexion())
-            logging.warn(config.url)
+        sinc_obj = self.env['sinc_pdv.in']
+        sinc_obj.iniciar(self.datos_conexion())
+        logging.warn(config.url)
 
     def sincronizacion_par(self):
-        for config in self:
-            sinc_obj = self.env['sinc_pdv.in']
-            sinc_obj.ordenes_pdv_par(self.datos_conexion())
-            logging.warn(config.url)
+        sinc_obj = self.env['sinc_pdv.in']
+        sinc_obj.ordenes_pdv_par(self.datos_conexion())
+        logging.warn(config.url)
 
     def sincronizacion_impar(self):
-        for config in self:
-            sinc_obj = self.env['sinc_pdv.in']
-            sinc_obj.ordenes_pdv_impar(self.datos_conexion())
-            logging.warn(config.url)
+        sinc_obj = self.env['sinc_pdv.in']
+        sinc_obj.ordenes_pdv_impar(self.datos_conexion())
+        logging.warn(config.url)
