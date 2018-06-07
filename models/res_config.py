@@ -32,3 +32,15 @@ class BaseConfigSettings(models.TransientModel):
             sinc_obj = self.env['sinc_pdv.in']
             sinc_obj.iniciar(self.datos_conexion())
             logging.warn(config.url)
+
+    def sincronizacion_par(self):
+        for config in self:
+            sinc_obj = self.env['sinc_pdv.in']
+            sinc_obj.ordenes_pdv_par(self.datos_conexion())
+            logging.warn(config.url)
+
+    def sincronizacion_impar(self):
+        for config in self:
+            sinc_obj = self.env['sinc_pdv.in']
+            sinc_obj.ordenes_pdv_impar(self.datos_conexion())
+            logging.warn(config.url)
