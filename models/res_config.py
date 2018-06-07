@@ -64,19 +64,15 @@ class BaseConfigSettings(models.TransientModel):
     def sincronizacion_inicial(self):
         sinc_obj = self.env['sinc_pdv.out']
         sinc_obj.iniciar(self.datos_conexion())
-        logging.warn(config.url)
 
     def sincronizacion_diaria(self):
         sinc_obj = self.env['sinc_pdv.in']
         sinc_obj.iniciar(self.datos_conexion())
-        logging.warn(config.url)
 
     def sincronizacion_par(self):
         sinc_obj = self.env['sinc_pdv.in']
         sinc_obj.ordenes_pdv_par(self.datos_conexion())
-        logging.warn(config.url)
 
     def sincronizacion_impar(self):
         sinc_obj = self.env['sinc_pdv.in']
         sinc_obj.ordenes_pdv_impar(self.datos_conexion())
-        logging.warn(config.url)
