@@ -652,7 +652,7 @@ class Sinc_PDV_in(models.Model):
     _name = 'sinc_pdv.in'
     _inherit = 'sinc.base'
 
-    
+
     @api.multi
     def _ajustes_inventario(self, conexion):
         ubicacion_ids = []
@@ -692,7 +692,7 @@ class Sinc_PDV_in(models.Model):
                     obj.action_done()
 
 
-                
+
     @api.multi
     def _ajustes_inventario2(self, conexion):
         stock_inventory_ids = self._buscar(conexion, 'stock.inventory', [['name', 'not like', 'Ajuste inicial'],['state', '=', 'done']])
@@ -731,7 +731,7 @@ class Sinc_PDV_in(models.Model):
             sesion_filtro = [['state', '=', 'closed'], ['config_id', 'in', config_ids]]
         else:
             sesion_filtro = [['state', '=', 'closed']]
-        
+
         sesion_ids = conexion['models'].execute_kw(conexion['database'], conexion['uid'], conexion['password'], 'pos.session', 'search', [sesion_filtro], {'order': 'config_id asc'})
         logging.getLogger('SESION_IDS ...').warn(sesion_ids)
         limit = 1
@@ -786,10 +786,13 @@ class Sinc_PDV_in(models.Model):
                         for pedido in self._leer(conexion, 'pos.order', [ordenes_destino_ids]):
                             logging.warn(pedido)
                             if pedido['invoice_id']:
-                                if x == 1:
-                                    nombre_primera_factura = pedido['invoice_id'][1]
-                                    x += 1
-                                nombre_ultima_factura = pedido['invoice_id'][1]
+                                factura = self._leer(conexion, 'account.invoice', [pedido['invoice_id'][0]])
+                                logging.warn(factura)
+                                if factura:
+                                    if x == 1:
+                                        nombre_primera_factura = factura[0]['name']
+                                        x += 1
+                                    nombre_ultima_factura = factura[0]['name']
 
                         obj = self.env['pos.order'].create({
                             'session_id': sesion_origen_id.id,
