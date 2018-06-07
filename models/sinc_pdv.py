@@ -684,98 +684,142 @@ class Sinc_PDV_in(models.Model):
 
 
     @api.multi
-    def _ordenes_pdv(self, conexion, trigger_id = ''):
-#        sesion_ids = self._buscar(conexion, 'pos.session', [['state', '=', 'closed'],['id', '>=', 7]])
-        sesion_ids = self._buscar(conexion, 'pos.session', [['state', '=', 'closed'],['config_id', '=', 67]])
-        for sesion_destino in conexion['models'].execute_kw(conexion['database'], conexion['uid'], conexion['password'], 'pos.session', 'read', [sesion_ids], {'fields': ['name','config_id','id','start_at']}):
-            sesion_origen_id = self.env['pos.session'].search([('name', '=', sesion_destino['name'])])
-            logging.getLogger('SESION DESTINO... ').warn(sesion_destino)
-            if not sesion_origen_id:
-                logging.warn(sesion_origen_id)
+    def _ordenes_pdv(self, conexion, config_ids=False):
+#        sesion_ids = self._buscar(conexion, 'pos.session', [['state', '=', 'closed']])
+        if config_ids:
+            sesion_filtro = [['state', '=', 'closed'], ['config_id', 'in', config_ids]]
+        else:
+            sesion_filtro = [['state', '=', 'closed']]
+        
+        sesion_ids = conexion['models'].execute_kw(conexion['database'], conexion['uid'], conexion['password'], 'pos.session', 'search', [sesion_filtro], {'order': 'config_id asc'})
+        logging.getLogger('SESION_IDS ...').warn(sesion_ids)
+        limit = 1
+#        for sesion_destino in conexion['models'].execute_kw(conexion['database'], conexion['uid'], conexion['password'], 'pos.session', 'read', [sesion_ids], {'fields': ['name','config_id','id','start_at']}):
+        for sesion_id in sesion_ids:
+            if limit <= 5:
+                sesion_destino = conexion['models'].execute_kw(conexion['database'], conexion['uid'], conexion['password'], 'pos.session', 'read', [[sesion_id]], {'fields': ['name','config_id','id','start_at']})
+                sesion_destino = sesion_destino[0]
+                sesion_origen_id = self.env['pos.session'].search([('name', '=', sesion_destino['name'])])
+                logging.getLogger('SESION DESTINO... ').warn(sesion_destino)
+                if not sesion_origen_id:
+                    logging.warn(sesion_origen_id)
 
-                pos_config_destino = self._leer(conexion, 'pos.config', [sesion_destino['config_id'][0]])
-                pos_config_origen = self.env['pos.config'].search([('name', '=', pos_config_destino[0]['name'])])[0]
-                logging.getLogger('sesion_destino name ').warn(sesion_destino['name'])
-                sesion_origen_id = self.env['pos.session'].create({'name': sesion_destino['name'], 'config_id': pos_config_origen.id})
-                sesion_origen_id.write({'name': sesion_destino['name']})
-                logging.warn(sesion_origen_id)
-                logging.getLogger('SESION STATE').warn(sesion_origen_id.statement_ids)
-                sesion_origen_id.action_pos_session_open()
+                    pos_config_destino = self._leer(conexion, 'pos.config', [sesion_destino['config_id'][0]])
+                    pos_config_origen = self.env['pos.config'].search([('name', '=', pos_config_destino[0]['name'])])[0]
+                    logging.getLogger('sesion_destino name ').warn(sesion_destino['name'])
+                    sesion_origen_id = self.env['pos.session'].create({'name': sesion_destino['name'], 'config_id': pos_config_origen.id})
+                    sesion_origen_id.write({'name': sesion_destino['name']})
+                    logging.warn(sesion_origen_id)
+                    logging.getLogger('SESION STATE').warn(sesion_origen_id.statement_ids)
+                    sesion_origen_id.action_pos_session_open()
 
-                ordenes_destino_ids = conexion['models'].execute_kw(conexion['database'], conexion['uid'], conexion['password'], 'pos.order', 'search', [[['session_id', '=', sesion_destino['id']]]], {'order': 'id asc'})
-#                ordenes_destino_ids = self._buscar(conexion, 'pos.order', [['session_id', '=', sesion_destino['id']]])
-                lineas_destino_ids = self._buscar(conexion, 'pos.order.line', [['order_id', 'in', ordenes_destino_ids]])
-                logging.getLogger('ordenes_destino_ids... ').warn(ordenes_destino_ids)
-                if ordenes_destino_ids and ordenes_destino_ids != []:
-                    lineas_pedido = {}
-                    for linea in self._leer(conexion, 'pos.order.line', [lineas_destino_ids]):
-                        producto_destino = self._leer(conexion, 'product.product', [linea['product_id'][0]])[0]
-                        producto_origen = self.env['product.product'].search([('default_code', '=', producto_destino['default_code'])])
-                        key = str(producto_origen.id) + '-' + str(linea['price_unit'])
-                        if key not in lineas_pedido:
-                            lineas_pedido[key] = {}
-                            lineas_pedido[key]['product_id'] = producto_origen.id
-                            lineas_pedido[key]['price_unit'] = linea['price_unit']
-                            lineas_pedido[key]['qty'] = linea['qty']
-                        else:
-                            lineas_pedido[key]['qty'] += linea['qty']
+                    ordenes_destino_ids = conexion['models'].execute_kw(conexion['database'], conexion['uid'], conexion['password'], 'pos.order', 'search', [[['session_id', '=', sesion_destino['id']]]], {'order': 'id asc'})
+    #                ordenes_destino_ids = self._buscar(conexion, 'pos.order', [['session_id', '=', sesion_destino['id']]])
+                    lineas_destino_ids = self._buscar(conexion, 'pos.order.line', [['order_id', 'in', ordenes_destino_ids]])
+                    logging.getLogger('ordenes_destino_ids... ').warn(ordenes_destino_ids)
+                    if ordenes_destino_ids and ordenes_destino_ids != []:
+                        lineas_pedido = {}
+                        for linea in self._leer(conexion, 'pos.order.line', [lineas_destino_ids]):
+                            producto_destino = self._leer(conexion, 'product.product', [linea['product_id'][0]])[0]
+                            producto_origen = self.env['product.product'].search([('default_code', '=', producto_destino['default_code'])])
+                            key = str(producto_origen.id) + '-' + str(linea['price_unit'])
+                            if key not in lineas_pedido:
+                                lineas_pedido[key] = {}
+                                lineas_pedido[key]['product_id'] = producto_origen.id
+                                lineas_pedido[key]['price_unit'] = linea['price_unit']
+                                lineas_pedido[key]['qty'] = linea['qty']
+                            else:
+                                lineas_pedido[key]['qty'] += linea['qty']
 
-                    lineas = []
-                    for key in lineas_pedido:
-                        lineas.append((0, 0, {
-                            'product_id': lineas_pedido[key]['product_id'],
-                            'price_unit': lineas_pedido[key]['price_unit'],
-                            'qty': lineas_pedido[key]['qty'],
-                        }))
+                        lineas = []
+                        for key in lineas_pedido:
+                            lineas.append((0, 0, {
+                                'product_id': lineas_pedido[key]['product_id'],
+                                'price_unit': lineas_pedido[key]['price_unit'],
+                                'qty': lineas_pedido[key]['qty'],
+                            }))
 
-                    nombre_primera_factura = ''
-                    nombre_ultima_factura = ''
-                    x = 1
-                    for pedido in self._leer(conexion, 'pos.order', [ordenes_destino_ids]):
-                        logging.warn(pedido)
-                        if pedido['invoice_id']:
-                            if x == 1:
-                                nombre_primera_factura = pedido['invoice_id'][1]
-                                x += 1
-                            nombre_ultima_factura = pedido['invoice_id'][1]
+                        nombre_primera_factura = ''
+                        nombre_ultima_factura = ''
+                        x = 1
+                        for pedido in self._leer(conexion, 'pos.order', [ordenes_destino_ids]):
+                            logging.warn(pedido)
+                            if pedido['invoice_id']:
+                                if x == 1:
+                                    nombre_primera_factura = pedido['invoice_id'][1]
+                                    x += 1
+                                nombre_ultima_factura = pedido['invoice_id'][1]
 
-                    obj = self.env['pos.order'].create({
-                        'session_id': sesion_origen_id.id,
-                        'date_order': sesion_destino['start_at'],
-                        'partner_id': pos_config_origen.default_client_id.id,
-                        'lines': lineas,
-                    })
-                    logging.getLogger('LINEAS ...').warn(lineas)
+                        obj = self.env['pos.order'].create({
+                            'session_id': sesion_origen_id.id,
+                            'date_order': sesion_destino['start_at'],
+                            'partner_id': pos_config_origen.default_client_id.id,
+                            'lines': lineas,
+                        })
+                        logging.getLogger('LINEAS ...').warn(lineas)
 
-                    pagos_destino_ids = self._buscar(conexion, 'account.bank.statement.line', [['pos_statement_id', 'in', ordenes_destino_ids]])
-                    pagos = {}
-                    for pago in self._leer(conexion, 'account.bank.statement.line', [pagos_destino_ids]):
-                        diario_destino = self._leer(conexion, 'account.journal', [pago['journal_id'][0]])[0]
-                        if diario_destino['code'] not in pagos:
-                            pagos[diario_destino['code']] = pago['amount']
-                        else:
-                            pagos[diario_destino['code']] += pago['amount']
-                        logging.getLogger('PAGO...').warn(pagos)
-                    for journal_code in pagos:
-                        diario_origen = self.env['account.journal'].search([('code', '=', journal_code)])
-                        logging.getLogger('journal_code...').warn(journal_code)
-                        obj.add_payment({'journal': diario_origen.id ,'amount': pagos[journal_code]})
+                        pagos_destino_ids = self._buscar(conexion, 'account.bank.statement.line', [['pos_statement_id', 'in', ordenes_destino_ids]])
+                        pagos = {}
+                        for pago in self._leer(conexion, 'account.bank.statement.line', [pagos_destino_ids]):
+                            diario_destino = self._leer(conexion, 'account.journal', [pago['journal_id'][0]])[0]
+                            if diario_destino['code'] not in pagos:
+                                pagos[diario_destino['code']] = pago['amount']
+                            else:
+                                pagos[diario_destino['code']] += pago['amount']
+                            logging.getLogger('PAGO...').warn(pagos)
+                        for journal_code in pagos:
+                            diario_origen = self.env['account.journal'].search([('code', '=', journal_code)])
+                            logging.getLogger('journal_code...').warn(journal_code)
+                            obj.add_payment({'journal': diario_origen.id ,'amount': pagos[journal_code]})
 
-                    logging.getLogger('obj.amount_total ...').warn(obj.amount_total)
-                    obj.action_pos_order_paid()
-                    obj.action_pos_order_invoice()
+                        logging.getLogger('obj.amount_total ...').warn(obj.amount_total)
+                        obj.action_pos_order_paid()
+                        obj.action_pos_order_invoice()
 
-                    logging.warn(obj)
-                    logging.warn(obj.invoice_id)
-                    logging.warn(nombre_primera_factura + ' - ' + nombre_ultima_factura)
-                    factura_origen = obj.invoice_id
-                    factura_origen.write({'name': nombre_primera_factura + ' - ' + nombre_ultima_factura, 'date_invoice': sesion_destino['start_at']})
+                        logging.warn(obj)
+                        logging.warn(obj.invoice_id)
+                        logging.warn(nombre_primera_factura + ' - ' + nombre_ultima_factura)
+                        factura_origen = obj.invoice_id
+                        factura_origen.write({'name': nombre_primera_factura + ' - ' + nombre_ultima_factura, 'date_invoice': sesion_destino['start_at']})
 
-                    obj.invoice_id.sudo().action_invoice_open()
-                    obj.account_move = obj.invoice_id.move_id
+                        obj.invoice_id.sudo().action_invoice_open()
+                        obj.account_move = obj.invoice_id.move_id
 
-                sesion_origen_id.action_pos_session_closing_control()
-                sesion_origen_id.action_pos_session_close()
+                    sesion_origen_id.action_pos_session_closing_control()
+                    sesion_origen_id.action_pos_session_close()
+                    limit += 1
+                    logging.getLogger('LIMIT ..... ').warn(limit)
+    #            if limit > 5:
+    #                logging.getLogger('BREAK ..... ').warn(limit)
+    #                break
+
+    @api.multi
+    def ordenes_pdv_par(self, conexion):
+        common = xmlrpclib.ServerProxy('{}/xmlrpc/2/common'.format(conexion['url']))
+        conexion['uid'] = common.authenticate(conexion['database'], conexion['username'], conexion['password'], {})
+        conexion['models'] = xmlrpclib.ServerProxy('{}/xmlrpc/2/object'.format(conexion['url']))
+
+        config_ids = conexion['models'].execute_kw(conexion['database'], conexion['uid'], conexion['password'], 'pos.config', 'search', [[['active', '=', True]]])
+        ids = []
+        for config_id in config_ids:
+            if config_id % 2 == 0:
+                ids.append(config_id)
+        logging.getLogger('Diarios con ID par').warn(ids)
+        self._ordenes_pdv(conexion, ids)
+
+    @api.multi
+    def ordenes_pdv_impar(self, conexion):
+        common = xmlrpclib.ServerProxy('{}/xmlrpc/2/common'.format(conexion['url']))
+        conexion['uid'] = common.authenticate(conexion['database'], conexion['username'], conexion['password'], {})
+        conexion['models'] = xmlrpclib.ServerProxy('{}/xmlrpc/2/object'.format(conexion['url']))
+
+        config_ids = conexion['models'].execute_kw(conexion['database'], conexion['uid'], conexion['password'], 'pos.config', 'search', [[['active', '=', True]]])
+        ids = []
+        for config_id in config_ids:
+            if config_id % 2 != 0:
+                ids.append(config_id)
+        logging.getLogger('Diarios con ID impar').warn(ids)
+        self._ordenes_pdv(conexion, ids)
 
 
     @api.multi
