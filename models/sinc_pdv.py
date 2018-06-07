@@ -653,8 +653,49 @@ class Sinc_PDV_in(models.Model):
     _name = 'sinc_pdv.in'
     _inherit = 'sinc.base'
 
+    
     @api.multi
     def _ajustes_inventario(self, conexion):
+        ubicacion_ids = []
+        config_ids = self._buscar(conexion, 'pos.config', [['active', '=', True]])
+        for config in self._leer(conexion, 'pos.config', [config_ids]):
+            if config['stock_location_id'][0] not in ubicacion_ids:
+                ubicacion_ids.append(config['stock_location_id'][0])
+
+        for ubicacion_id in ubicacion_ids:
+            inventario_destino_id = conexion['models'].execute_kw(conexion['database'], conexion['uid'], conexion['password'], 'stock.inventory', 'search', [[['name', 'not like', 'Ajuste inicial'],['state', '=', 'done'],['location_id', '=', ubicacion_id]]], {'order': 'date desc', 'limit': 1})
+            if inventario_destino_id:
+                inventario_destino = self._leer(conexion, 'stock.inventory', [inventario_destino_id])[0]
+                inventario_origen_id = self.env['stock.inventory'].search([('name', '=', inventario_destino['name'])])
+                if not inventario_origen_id:
+
+                    ubicacion_destino = self._leer(conexion, 'stock.location', [inventario_destino['location_id'][0]])
+                    ubicacion_origen = self.env['stock.location'].search([('barcode', '=', ubicacion_destino[0]['barcode'])])[0]
+
+                    dict = {}
+                    dict['name'] = inventario_destino['name']
+                    dict['location_id'] = ubicacion_origen.id
+                    line_ids = []
+                    for linea in self._leer(conexion, 'stock.inventory.line', [inventario_destino['line_ids']]):
+                        producto_destino = self._leer(conexion, 'product.product', [linea['product_id'][0]])
+                        producto_origen = self.env['product.product'].search([('default_code', '=', producto_destino[0]['default_code'])])[0]
+
+                        line_ids.append((0, 0, {
+                            'location_id': ubicacion_origen.id,
+                            'product_id': producto_origen.id,
+                            'product_qty': linea['product_qty'],
+                            'filter': 'partial',
+                        }))
+                        dict['line_ids'] = line_ids
+
+                    obj = self.env['stock.inventory'].create(dict)
+                    obj.action_start()
+                    obj.action_done()
+
+
+                
+    @api.multi
+    def _ajustes_inventario2(self, conexion):
         stock_inventory_ids = self._buscar(conexion, 'stock.inventory', [['name', 'not like', 'Ajuste inicial'],['state', '=', 'done']])
         for inventario_destino in self._leer(conexion, 'stock.inventory', [stock_inventory_ids]):
             inventario_origen_id = self.env['stock.inventory'].search([('name', '=', inventario_destino['name'])])
