@@ -620,30 +620,30 @@ class Sinc_PDV(models.Model):
                 self._productos(conexion, obj.id)
         else:
             logging.warn('INICIO')
-            logging.warn('Transfiriendo ubicaciones')
-            self._ubicaciones(conexion)
-            logging.warn('Transfiriendo pos_sat_resoluciones')
-            self._pos_sat_resolucion(conexion)
+            # logging.warn('Transfiriendo ubicaciones')
+            # self._ubicaciones(conexion)
+            # logging.warn('Transfiriendo pos_sat_resoluciones')
+            # self._pos_sat_resolucion(conexion)
             # logging.warn('Transfiriendo diarios')
             # self._diarios(conexion)
-            logging.warn('Transfiriendo categorias de producto')
-            self._categorias_producto(conexion)
-            self._categorias_producto(conexion)
-            logging.warn('Transfiriendo categorias de pdv')
-            self._categorias_pdv(conexion)
-            self._categorias_pdv(conexion)
-            logging.warn('Transfiriendo pdv')
-            self._pdv(conexion)
-            logging.warn('Transfiriendo usuarios')
-            self._usuarios(conexion)
-            logging.warn('Transfiriendo productos')
-            self._productos(conexion)
-            logging.warn('Transfiriendo pos_gt_extra')
-            self._pos_gt_extra(conexion)
-            logging.warn('Transfiriendo productos')
-            self._productos(conexion)
-            logging.warn('Transfiriendo lista de materiales')
-            self._lista_materiales(conexion)
+            # logging.warn('Transfiriendo categorias de producto')
+            # self._categorias_producto(conexion)
+            # self._categorias_producto(conexion)
+            # logging.warn('Transfiriendo categorias de pdv')
+            # self._categorias_pdv(conexion)
+            # self._categorias_pdv(conexion)
+            # logging.warn('Transfiriendo pdv')
+            # self._pdv(conexion)
+            # logging.warn('Transfiriendo usuarios')
+            # self._usuarios(conexion)
+            # logging.warn('Transfiriendo productos')
+            # self._productos(conexion)
+            # logging.warn('Transfiriendo pos_gt_extra')
+            # self._pos_gt_extra(conexion)
+            # logging.warn('Transfiriendo productos')
+            # self._productos(conexion)
+            # logging.warn('Transfiriendo lista de materiales')
+            # self._lista_materiales(conexion)
             # logging.warn('Creando ajuste inicial')
             # self._ajuste_inicial(conexion)
             logging.warn('FIN!!!')
@@ -686,10 +686,10 @@ class Sinc_PDV_in(models.Model):
     @api.multi
     def _ordenes_pdv(self, conexion, trigger_id = ''):
 #        sesion_ids = self._buscar(conexion, 'pos.session', [['state', '=', 'closed'],['id', '>=', 7]])
-        sesion_ids = self._buscar(conexion, 'pos.session', [['state', '=', 'closed']])
-        for sesion_destino in conexion['models'].execute_kw(conexion['database'], conexion['uid'], conexion['password'], 'pos.session', 'read', [sesion_ids], {'fields': ['name','config_id','id']}):
+        sesion_ids = self._buscar(conexion, 'pos.session', [['state', '=', 'closed'],['config_id', '=', 67]])
+        for sesion_destino in conexion['models'].execute_kw(conexion['database'], conexion['uid'], conexion['password'], 'pos.session', 'read', [sesion_ids], {'fields': ['name','config_id','id','start_at']}):
             sesion_origen_id = self.env['pos.session'].search([('name', '=', sesion_destino['name'])])
-            logging.warn(sesion_destino)
+            logging.getLogger('SESION DESTINO... ').warn(sesion_destino)
             if not sesion_origen_id:
                 logging.warn(sesion_origen_id)
 
@@ -711,19 +711,21 @@ class Sinc_PDV_in(models.Model):
                     for linea in self._leer(conexion, 'pos.order.line', [lineas_destino_ids]):
                         producto_destino = self._leer(conexion, 'product.product', [linea['product_id'][0]])[0]
                         producto_origen = self.env['product.product'].search([('default_code', '=', producto_destino['default_code'])])
-                        if producto_origen.id not in lineas_pedido:
-                            lineas_pedido[producto_origen.id] = {}
-                            lineas_pedido[producto_origen.id]['price_unit'] = linea['price_unit']
-                            lineas_pedido[producto_origen.id]['qty'] = linea['qty']
+                        key = str(producto_origen.id) + '-' + str(linea['price_unit'])
+                        if key not in lineas_pedido:
+                            lineas_pedido[key] = {}
+                            lineas_pedido[key]['product_id'] = producto_origen.id
+                            lineas_pedido[key]['price_unit'] = linea['price_unit']
+                            lineas_pedido[key]['qty'] = linea['qty']
                         else:
-                            lineas_pedido[producto_origen.id]['qty'] += linea['qty']
+                            lineas_pedido[key]['qty'] += linea['qty']
 
                     lineas = []
-                    for product_id in lineas_pedido:
+                    for key in lineas_pedido:
                         lineas.append((0, 0, {
-                            'product_id': product_id,
-                            'price_unit': lineas_pedido[product_id]['price_unit'],
-                            'qty': lineas_pedido[product_id]['qty'],
+                            'product_id': lineas_pedido[key]['product_id'],
+                            'price_unit': lineas_pedido[key]['price_unit'],
+                            'qty': lineas_pedido[key]['qty'],
                         }))
 
                     nombre_primera_factura = ''
@@ -731,16 +733,19 @@ class Sinc_PDV_in(models.Model):
                     x = 1
                     for pedido in self._leer(conexion, 'pos.order', [ordenes_destino_ids]):
                         logging.warn(pedido)
-                        if x == 1:
-                            nombre_primera_factura = pedido['invoice_id'][1]
-                            x += 1
-                        nombre_ultima_factura = pedido['invoice_id'][1]
+                        if pedido['invoice_id']:
+                            if x == 1:
+                                nombre_primera_factura = pedido['invoice_id'][1]
+                                x += 1
+                            nombre_ultima_factura = pedido['invoice_id'][1]
 
                     obj = self.env['pos.order'].create({
                         'session_id': sesion_origen_id.id,
+                        'date_order': sesion_destino['start_at'],
                         'partner_id': pos_config_origen.default_client_id.id,
                         'lines': lineas,
                     })
+                    logging.getLogger('LINEAS ...').warn(lineas)
 
                     pagos_destino_ids = self._buscar(conexion, 'account.bank.statement.line', [['pos_statement_id', 'in', ordenes_destino_ids]])
                     pagos = {}
@@ -756,6 +761,7 @@ class Sinc_PDV_in(models.Model):
                         logging.getLogger('journal_code...').warn(journal_code)
                         obj.add_payment({'journal': diario_origen.id ,'amount': pagos[journal_code]})
 
+                    logging.getLogger('obj.amount_total ...').warn(obj.amount_total)
                     obj.action_pos_order_paid()
                     obj.action_pos_order_invoice()
 
@@ -763,7 +769,7 @@ class Sinc_PDV_in(models.Model):
                     logging.warn(obj.invoice_id)
                     logging.warn(nombre_primera_factura + ' - ' + nombre_ultima_factura)
                     factura_origen = obj.invoice_id
-                    factura_origen.write({'name': nombre_primera_factura + ' - ' + nombre_ultima_factura})
+                    factura_origen.write({'name': nombre_primera_factura + ' - ' + nombre_ultima_factura, 'date_invoice': sesion_destino['start_at']})
 
                     obj.invoice_id.sudo().action_invoice_open()
                     obj.account_move = obj.invoice_id.move_id
