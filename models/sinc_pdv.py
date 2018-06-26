@@ -1,10 +1,12 @@
 # -*- coding: utf-8 -*-
 
 from odoo import models, fields, api
+from odoo.exceptions import UserError
 import xmlrpclib
 import datetime
 import urllib, base64
 import logging
+import random
 
 class Sinc_Base(models.Model):
     _name = 'sinc.base'
@@ -77,7 +79,7 @@ class Sinc_Base(models.Model):
             nuevo_obj_destino_id = conexion['models'].execute_kw(conexion['database'], conexion['uid'], conexion['password'], self.res_model(), 'create', [obj_dict])
         else:
             conexion['models'].execute_kw(conexion['database'], conexion['uid'], conexion['password'], self.res_model(), 'write', [[obj_id[0]], obj_dict])
-            nuevo_obj_destino_id = False
+            nuevo_obj_destino_id = obj_id[0]
         return nuevo_obj_destino_id
 
 
@@ -135,7 +137,7 @@ class Sinc_PDV_Diarios(models.Model):
 
     def campos(self):
         dict = {}
-        dict['estandar'] = ['sinc_id', 'name', 'type', 'code', 'ultimo_numero_factura', 'requiere_resolucion', 'usuario_gface', 'clave_gface', 'tipo_documento_gface', 'serie_documento_gface', 'serie_gface', 'numero_resolucion_gface', 'fecha_resolucion_gface', 'rango_inicial_gface', 'rango_final_gface', 'numero_establecimiento_gface', 'dispositivo_gface', 'nombre_establecimiento_gface']
+        dict['estandar'] = ['sinc_id', 'name', 'type', 'code', 'requiere_resolucion', 'clave_gface', 'tipo_documento_gface', 'serie_documento_gface', 'serie_gface', 'numero_resolucion_gface', 'fecha_resolucion_gface', 'rango_inicial_gface', 'rango_final_gface', 'numero_establecimiento_gface', 'dispositivo_gface', 'nombre_establecimiento_gface']
         dict['m2o'] = []
 #        dict['o2m'] = []
 #        dict['m2m'] = []
@@ -283,8 +285,8 @@ class Sinc_PDV(models.Model):
     @api.multi
     def _pdv(self, conexion, trigger_id = ''):
         res_model = 'pos.config'
-        campos = ['name','group_by', 'allow_discount', 'allow_price_change', 'takeout_option', 'ask_tag_number', 'tipo_impresora', 'iface_precompute_cash', 'iface_invoicing', 'cash_control']
-        filtro_search = []
+        campos = ['name', 'active', 'group_by', 'allow_discount', 'allow_price_change', 'takeout_option', 'ask_tag_number', 'tipo_impresora', 'iface_precompute_cash', 'iface_invoicing', 'cash_control']
+        filtro_search = ['|', ('active','=',True), ('active','=',False)]
         if trigger_id != '':
             filtro_search.append(('id', '=', trigger_id))
         filtro_existe = 'name'
@@ -338,7 +340,8 @@ class Sinc_PDV(models.Model):
                 m2m_obj = obj.categorias_id
                 m2m_campo = 'categorias_id'
                 m2m_filtro_existe = 'sinc_id'
-                obj_dict['categorias_id'] = self._preparar_m2m(conexion, m2m_res_model, m2m_obj, m2m_campo, m2m_filtro_existe)
+                m2m_ids_borrar = registro['categorias_id']
+                obj_dict['categorias_id'] = self._preparar_m2m(conexion, m2m_res_model, m2m_obj, m2m_campo, m2m_filtro_existe, m2m_ids_borrar)
 
                 conexion['models'].execute_kw(conexion['database'], conexion['uid'], conexion['password'], res_model, 'write', [[obj_id[0]], obj_dict])
 
@@ -500,7 +503,7 @@ class Sinc_PDV(models.Model):
         for obj in self.env[res_model].search(filtro_search, order='id asc'):
             logging.getLogger('Lista').warn(obj.code)
             obj_dict = self._preparar_diccionario2(obj, campos)
-            product_tmpl_id = self._buscar(conexion, 'product.product', [['default_code', '=', obj.product_tmpl_id.default_code]])
+            product_tmpl_id = self._buscar(conexion, 'product.template', [['default_code', '=', obj.product_tmpl_id.default_code]])
             if product_tmpl_id:
                 obj_dict['product_tmpl_id'] = product_tmpl_id[0]
 
@@ -655,73 +658,79 @@ class Sinc_PDV_in(models.Model):
 
     @api.multi
     def _ajustes_inventario(self, conexion):
-        ubicacion_ids = []
+#        ubicacion_ids = []
+        pos = {}
         config_ids = self._buscar(conexion, 'pos.config', [['active', '=', True]])
         for config in self._leer(conexion, 'pos.config', [config_ids]):
-            if config['stock_location_id'][0] not in ubicacion_ids:
-                ubicacion_ids.append(config['stock_location_id'][0])
+#            if config['stock_location_id'][0] not in ubicacion_ids:
+            if config['stock_location_id'][0] not in pos.keys():
+                logging.getLogger('config.name... ').warn(config['name'])
+                logging.getLogger('config.stock_location_id... ').warn(config['stock_location_id'][0])
+#                ubicacion_ids.append(config['stock_location_id'][0])
+                ubicacion_destino = self._leer(conexion, 'stock.location', [config['stock_location_id'][0]])
+                if ubicacion_destino[0]['barcode']:
+                    logging.getLogger('ubicacion_destino... ').warn(ubicacion_destino)
+                    ubicacion_origen = self.env['stock.location'].search([('barcode', '=', ubicacion_destino[0]['barcode'])])
+                    if ubicacion_origen:
+                        ubicacion_origen = ubicacion_origen[0]
+                        logging.getLogger('ubicacion_origen... ').warn(ubicacion_origen)
+                        config_origen = self.env['pos.config'].search([('stock_location_id', '=', ubicacion_origen.id)])
+                        if config_origen:
+                            config_origen = config_origen[0]
+                            pos[config['stock_location_id'][0]] = config_origen.analytic_account_id.id
 
-        for ubicacion_id in ubicacion_ids:
-            inventario_destino_id = conexion['models'].execute_kw(conexion['database'], conexion['uid'], conexion['password'], 'stock.inventory', 'search', [[['name', 'not like', 'Ajuste inicial'],['state', '=', 'done'],['location_id', '=', ubicacion_id]]], {'order': 'date desc', 'limit': 1})
-            if inventario_destino_id:
-                inventario_destino = self._leer(conexion, 'stock.inventory', [inventario_destino_id])[0]
-                inventario_origen_id = self.env['stock.inventory'].search([('name', '=', inventario_destino['name'])])
-                if not inventario_origen_id:
+        limit = 1
+#        for ubicacion_id in ubicacion_ids:
+        for ubicacion_id in pos:
+            if limit <= 2:
+                logging.getLogger('LIMIT ... ').warn(limit)
+                inventario_destino_id = conexion['models'].execute_kw(conexion['database'], conexion['uid'], conexion['password'], 'stock.inventory', 'search', [[['name', 'not like', 'Ajuste inicial'],['state', '=', 'done'],['location_id', '=', ubicacion_id]]], {'order': 'date desc', 'limit': 1})
+                if inventario_destino_id:
+                    inventario_destino = self._leer(conexion, 'stock.inventory', [inventario_destino_id])[0]
+                    inventario_origen_id = self.env['stock.inventory'].search([('name', '=', inventario_destino['name'])])
+                    if not inventario_origen_id:
 
-                    ubicacion_destino = self._leer(conexion, 'stock.location', [inventario_destino['location_id'][0]])
-                    ubicacion_origen = self.env['stock.location'].search([('barcode', '=', ubicacion_destino[0]['barcode'])])[0]
+                        ubicacion_destino = self._leer(conexion, 'stock.location', [inventario_destino['location_id'][0]])
+                        ubicacion_origen = self.env['stock.location'].search([('barcode', '=', ubicacion_destino[0]['barcode'])])[0]
+                        logging.getLogger('ubicacion_destino ...').warn(ubicacion_destino)
+                        logging.getLogger('ubicacion_origen ...').warn(ubicacion_origen)
+                        dict = {}
+                        dict['name'] = inventario_destino['name']
+                        dict['date'] = inventario_destino['date']
+                        dict['location_id'] = ubicacion_origen.id
+                        dict['filter'] = 'partial'
+                        dict['cuenta_analitica_id'] = pos[ubicacion_id]
+                        line_ids = []
+                        logging.warn('INICIO PREPARAR PRODUCTOS ... ')
+                        for linea in self._leer(conexion, 'stock.inventory.line', [inventario_destino['line_ids']]):
+                            producto_destino = self._leer(conexion, 'product.product', [linea['product_id'][0]])
+                            producto_origen = self.env['product.product'].search([('default_code', '=', producto_destino[0]['default_code'])])[0]
 
-                    dict = {}
-                    dict['name'] = inventario_destino['name']
-                    dict['location_id'] = ubicacion_origen.id
-                    line_ids = []
-                    for linea in self._leer(conexion, 'stock.inventory.line', [inventario_destino['line_ids']]):
-                        producto_destino = self._leer(conexion, 'product.product', [linea['product_id'][0]])
-                        producto_origen = self.env['product.product'].search([('default_code', '=', producto_destino[0]['default_code'])])[0]
+                            logging.getLogger('PRODUCTO DESTINO ....').warn(producto_destino[0]['default_code'])
 
-                        line_ids.append((0, 0, {
-                            'location_id': ubicacion_origen.id,
-                            'product_id': producto_origen.id,
-                            'product_qty': linea['product_qty'],
-                            'filter': 'partial',
-                        }))
-                        dict['line_ids'] = line_ids
+                            line_ids.append((0, 0, {
+                                'location_id': ubicacion_origen.id,
+                                'product_id': producto_origen.id,
+                                'product_qty': linea['product_qty'],
+                            }))
+                            dict['line_ids'] = line_ids
 
-                    obj = self.env['stock.inventory'].create(dict)
-                    obj.action_start()
-                    obj.action_done()
+                        logging.warn('FIN PREPARAR PRODUCTOS ... ')
 
-
-
-    @api.multi
-    def _ajustes_inventario2(self, conexion):
-        stock_inventory_ids = self._buscar(conexion, 'stock.inventory', [['name', 'not like', 'Ajuste inicial'],['state', '=', 'done']])
-        for inventario_destino in self._leer(conexion, 'stock.inventory', [stock_inventory_ids]):
-            inventario_origen_id = self.env['stock.inventory'].search([('name', '=', inventario_destino['name'])])
-            if not inventario_origen_id:
-
-                ubicacion_destino = self._leer(conexion, 'stock.location', [inventario_destino['location_id'][0]])
-                ubicacion_origen = self.env['stock.location'].search([('barcode', '=', ubicacion_destino[0]['barcode'])])[0]
-
-                dict = {}
-                dict['name'] = inventario_destino['name']
-                dict['location_id'] = ubicacion_origen.id
-                line_ids = []
-                for linea in self._leer(conexion, 'stock.inventory.line', [inventario_destino['line_ids']]):
-                    producto_destino = self._leer(conexion, 'product.product', [linea['product_id'][0]])
-                    producto_origen = self.env['product.product'].search([('default_code', '=', producto_destino[0]['default_code'])])[0]
-
-                    line_ids.append((0, 0, {
-                        'location_id': ubicacion_origen.id,
-                        'product_id': producto_origen.id,
-                        'product_qty': linea['product_qty'],
-                        'filter': 'partial',
-                    }))
-                    dict['line_ids'] = line_ids
-
-                obj = self.env['stock.inventory'].create(dict)
-                obj.action_start()
-                obj.action_done()
+                        obj = self.env['stock.inventory'].create(dict)
+                        obj.write({'date': inventario_destino['date']})
+                        logging.getLogger('INVENTARIO CREADO ....').warn(obj)
+                        logging.getLogger('LIMIT... ').warn(limit)
+                        logging.getLogger('NOMBRE DESTINO... ').warn(inventario_destino['name'])
+                        logging.getLogger('FECHA DESTINO... ').warn(inventario_destino['date'])
+                        logging.getLogger('FECHA ORIGEN... ').warn(obj.date)
+                        logging.getLogger('INVENTARIO DESTINO ....').warn(inventario_destino)
+                        obj.action_start()
+                        logging.warn('FINALIZADO action_start')
+                        obj.action_done()
+                        logging.warn('FINALIZADO action_done')
+                        logging.getLogger('FINALIZADO TRASLADO No... ').warn(limit)
+                        limit += 1
 
 
     @api.multi
@@ -735,8 +744,9 @@ class Sinc_PDV_in(models.Model):
         sesion_ids = conexion['models'].execute_kw(conexion['database'], conexion['uid'], conexion['password'], 'pos.session', 'search', [sesion_filtro], {'order': 'config_id asc'})
         logging.getLogger('SESION_IDS ...').warn(sesion_ids)
         limit = 1
+        sesion_ids_random = random.sample(sesion_ids, len(sesion_ids))
 #        for sesion_destino in conexion['models'].execute_kw(conexion['database'], conexion['uid'], conexion['password'], 'pos.session', 'read', [sesion_ids], {'fields': ['name','config_id','id','start_at']}):
-        for sesion_id in sesion_ids:
+        for sesion_id in sesion_ids_random:
             if limit <= 5:
                 sesion_destino = conexion['models'].execute_kw(conexion['database'], conexion['uid'], conexion['password'], 'pos.session', 'read', [[sesion_id]], {'fields': ['name','config_id','id','start_at']})
                 sesion_destino = sesion_destino[0]
@@ -744,95 +754,103 @@ class Sinc_PDV_in(models.Model):
                 logging.getLogger('SESION DESTINO... ').warn(sesion_destino)
                 if not sesion_origen_id:
                     logging.warn(sesion_origen_id)
+                    try:
+                        pos_config_destino = self._leer(conexion, 'pos.config', [sesion_destino['config_id'][0]])
+                        pos_config_origen = self.env['pos.config'].search([('name', '=', pos_config_destino[0]['name'])])[0]
+                        logging.getLogger('sesion_destino name ').warn(sesion_destino['name'])
+                        sesion_origen_id = self.env['pos.session'].create({'name': sesion_destino['name'], 'config_id': pos_config_origen.id})
+                        sesion_origen_id.write({'name': sesion_destino['name']})
+                        logging.warn(sesion_origen_id)
+                        logging.getLogger('SESION STATE').warn(sesion_origen_id.statement_ids)
+                        sesion_origen_id.action_pos_session_open()
 
-                    pos_config_destino = self._leer(conexion, 'pos.config', [sesion_destino['config_id'][0]])
-                    pos_config_origen = self.env['pos.config'].search([('name', '=', pos_config_destino[0]['name'])])[0]
-                    logging.getLogger('sesion_destino name ').warn(sesion_destino['name'])
-                    sesion_origen_id = self.env['pos.session'].create({'name': sesion_destino['name'], 'config_id': pos_config_origen.id})
-                    sesion_origen_id.write({'name': sesion_destino['name']})
-                    logging.warn(sesion_origen_id)
-                    logging.getLogger('SESION STATE').warn(sesion_origen_id.statement_ids)
-                    sesion_origen_id.action_pos_session_open()
+                        ordenes_destino_ids = conexion['models'].execute_kw(conexion['database'], conexion['uid'], conexion['password'], 'pos.order', 'search', [[['session_id', '=', sesion_destino['id']]]], {'order': 'id asc'})
+        #                ordenes_destino_ids = self._buscar(conexion, 'pos.order', [['session_id', '=', sesion_destino['id']]])
+                        lineas_destino_ids = self._buscar(conexion, 'pos.order.line', [['order_id', 'in', ordenes_destino_ids]])
+                        logging.getLogger('ordenes_destino_ids... ').warn(ordenes_destino_ids)
+                        if ordenes_destino_ids and ordenes_destino_ids != []:
+                            lineas_pedido = {}
+                            for linea in self._leer(conexion, 'pos.order.line', [lineas_destino_ids]):
+                                producto_destino = self._leer(conexion, 'product.product', [linea['product_id'][0]])[0]
+                                # logging.getLogger('producto_destino... ').warn(producto_destino)
+                                producto_origen = self.env['product.product'].search([('default_code', '=', producto_destino['default_code'])])
+                                # logging.getLogger('producto_origen... ').warn(producto_origen)
+                                key = str(producto_origen.id) + '-' + str(linea['price_unit'])
+                                if key not in lineas_pedido:
+                                    lineas_pedido[key] = {}
+                                    lineas_pedido[key]['product_id'] = producto_origen.id
+                                    lineas_pedido[key]['price_unit'] = linea['price_unit']
+                                    lineas_pedido[key]['qty'] = linea['qty']
+                                else:
+                                    lineas_pedido[key]['qty'] += linea['qty']
 
-                    ordenes_destino_ids = conexion['models'].execute_kw(conexion['database'], conexion['uid'], conexion['password'], 'pos.order', 'search', [[['session_id', '=', sesion_destino['id']]]], {'order': 'id asc'})
-    #                ordenes_destino_ids = self._buscar(conexion, 'pos.order', [['session_id', '=', sesion_destino['id']]])
-                    lineas_destino_ids = self._buscar(conexion, 'pos.order.line', [['order_id', 'in', ordenes_destino_ids]])
-                    logging.getLogger('ordenes_destino_ids... ').warn(ordenes_destino_ids)
-                    if ordenes_destino_ids and ordenes_destino_ids != []:
-                        lineas_pedido = {}
-                        for linea in self._leer(conexion, 'pos.order.line', [lineas_destino_ids]):
-                            producto_destino = self._leer(conexion, 'product.product', [linea['product_id'][0]])[0]
-                            producto_origen = self.env['product.product'].search([('default_code', '=', producto_destino['default_code'])])
-                            key = str(producto_origen.id) + '-' + str(linea['price_unit'])
-                            if key not in lineas_pedido:
-                                lineas_pedido[key] = {}
-                                lineas_pedido[key]['product_id'] = producto_origen.id
-                                lineas_pedido[key]['price_unit'] = linea['price_unit']
-                                lineas_pedido[key]['qty'] = linea['qty']
-                            else:
-                                lineas_pedido[key]['qty'] += linea['qty']
+                            lineas = []
+                            for key in lineas_pedido:
+                                lineas.append((0, 0, {
+                                    'product_id': lineas_pedido[key]['product_id'],
+                                    'price_unit': lineas_pedido[key]['price_unit'],
+                                    'qty': lineas_pedido[key]['qty'],
+                                }))
 
-                        lineas = []
-                        for key in lineas_pedido:
-                            lineas.append((0, 0, {
-                                'product_id': lineas_pedido[key]['product_id'],
-                                'price_unit': lineas_pedido[key]['price_unit'],
-                                'qty': lineas_pedido[key]['qty'],
-                            }))
+                            nombre_primera_factura = ''
+                            nombre_ultima_factura = ''
+                            x = 1
+                            for pedido in self._leer(conexion, 'pos.order', [ordenes_destino_ids]):
+                                logging.warn(pedido)
+                                if pedido['invoice_id']:
+                                    factura = self._leer(conexion, 'account.invoice', [pedido['invoice_id'][0]])
+                                    logging.warn(factura)
+                                    if factura:
+                                        if x == 1:
+                                            nombre_primera_factura = factura[0]['name']
+                                            x += 1
+                                        nombre_ultima_factura = factura[0]['name']
 
-                        nombre_primera_factura = ''
-                        nombre_ultima_factura = ''
-                        x = 1
-                        for pedido in self._leer(conexion, 'pos.order', [ordenes_destino_ids]):
-                            logging.warn(pedido)
-                            if pedido['invoice_id']:
-                                factura = self._leer(conexion, 'account.invoice', [pedido['invoice_id'][0]])
-                                logging.warn(factura)
-                                if factura:
-                                    if x == 1:
-                                        nombre_primera_factura = factura[0]['name']
-                                        x += 1
-                                    nombre_ultima_factura = factura[0]['name']
+                            obj = self.env['pos.order'].create({
+                                'session_id': sesion_origen_id.id,
+                                'date_order': sesion_destino['start_at'],
+                                'partner_id': pos_config_origen.default_client_id.id,
+                                'lines': lineas,
+                            })
+                            logging.getLogger('LINEAS ...').warn(lineas)
 
-                        obj = self.env['pos.order'].create({
-                            'session_id': sesion_origen_id.id,
-                            'date_order': sesion_destino['start_at'],
-                            'partner_id': pos_config_origen.default_client_id.id,
-                            'lines': lineas,
-                        })
-                        logging.getLogger('LINEAS ...').warn(lineas)
+                            pagos_destino_ids = self._buscar(conexion, 'account.bank.statement.line', [['pos_statement_id', 'in', ordenes_destino_ids]])
+                            pagos = {}
+                            for pago in self._leer(conexion, 'account.bank.statement.line', [pagos_destino_ids]):
+                                diario_destino = self._leer(conexion, 'account.journal', [pago['journal_id'][0]])[0]
+                                if diario_destino['code'] not in pagos:
+                                    pagos[diario_destino['code']] = pago['amount']
+                                else:
+                                    pagos[diario_destino['code']] += pago['amount']
+                                logging.getLogger('PAGO...').warn(pagos)
+                            for journal_code in pagos:
+                                diario_origen = self.env['account.journal'].search([('code', '=', journal_code)])
+                                logging.getLogger('journal_code...').warn(journal_code)
+                                obj.add_payment({'journal': diario_origen.id ,'amount': pagos[journal_code]})
 
-                        pagos_destino_ids = self._buscar(conexion, 'account.bank.statement.line', [['pos_statement_id', 'in', ordenes_destino_ids]])
-                        pagos = {}
-                        for pago in self._leer(conexion, 'account.bank.statement.line', [pagos_destino_ids]):
-                            diario_destino = self._leer(conexion, 'account.journal', [pago['journal_id'][0]])[0]
-                            if diario_destino['code'] not in pagos:
-                                pagos[diario_destino['code']] = pago['amount']
-                            else:
-                                pagos[diario_destino['code']] += pago['amount']
-                            logging.getLogger('PAGO...').warn(pagos)
-                        for journal_code in pagos:
-                            diario_origen = self.env['account.journal'].search([('code', '=', journal_code)])
-                            logging.getLogger('journal_code...').warn(journal_code)
-                            obj.add_payment({'journal': diario_origen.id ,'amount': pagos[journal_code]})
+                            logging.getLogger('obj.amount_total ...').warn(obj.amount_total)
+                            obj.action_pos_order_paid()
+                            obj.action_pos_order_invoice()
 
-                        logging.getLogger('obj.amount_total ...').warn(obj.amount_total)
-                        obj.action_pos_order_paid()
-                        obj.action_pos_order_invoice()
+                            logging.warn(obj)
+                            logging.warn(obj.invoice_id)
+                            logging.warn(nombre_primera_factura + ' - ' + nombre_ultima_factura)
+                            factura_origen = obj.invoice_id
+                            factura_origen.write({'name': nombre_primera_factura + ' - ' + nombre_ultima_factura, 'date_invoice': sesion_destino['start_at']})
 
-                        logging.warn(obj)
-                        logging.warn(obj.invoice_id)
-                        logging.warn(nombre_primera_factura + ' - ' + nombre_ultima_factura)
-                        factura_origen = obj.invoice_id
-                        factura_origen.write({'name': nombre_primera_factura + ' - ' + nombre_ultima_factura, 'date_invoice': sesion_destino['start_at']})
+                            obj.invoice_id.sudo().action_invoice_open()
+                            obj.account_move = obj.invoice_id.move_id
 
-                        obj.invoice_id.sudo().action_invoice_open()
-                        obj.account_move = obj.invoice_id.move_id
-
-                    sesion_origen_id.action_pos_session_closing_control()
-                    sesion_origen_id.action_pos_session_close()
-                    limit += 1
-                    logging.getLogger('LIMIT ..... ').warn(limit)
+                        sesion_origen_id.action_pos_session_closing_control()
+                        sesion_origen_id.action_pos_session_close()
+                        limit += 1
+                        logging.getLogger('LIMIT ..... ').warn(limit)
+                    except:
+                        logging.getLogger('ERROR ...').warn('No se pudo pagar el pedido.')
+                        if obj:
+                            obj.unlink()
+                            if sesion_origen_id:
+                                sesion_origen_id.unlink()
     #            if limit > 5:
     #                logging.getLogger('BREAK ..... ').warn(limit)
     #                break
@@ -872,5 +890,5 @@ class Sinc_PDV_in(models.Model):
         conexion['uid'] = common.authenticate(conexion['database'], conexion['username'], conexion['password'], {})
         conexion['models'] = xmlrpclib.ServerProxy('{}/xmlrpc/2/object'.format(conexion['url']))
 
-        self._ordenes_pdv(conexion)
-        # self._ajustes_inventario(conexion)
+        # self._ordenes_pdv(conexion)
+        self._ajustes_inventario(conexion)
