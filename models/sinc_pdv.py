@@ -285,7 +285,7 @@ class Sinc_PDV(models.Model):
     @api.multi
     def _pdv(self, conexion, trigger_id = ''):
         res_model = 'pos.config'
-        campos = ['name', 'active', 'group_by', 'allow_discount', 'allow_price_change', 'takeout_option', 'ask_tag_number', 'tipo_impresora', 'iface_precompute_cash', 'iface_invoicing', 'cash_control']
+        campos = ['name', 'active', 'group_by', 'allow_discount', 'allow_price_change', 'takeout_option', 'ask_tag_number', 'tipo_impresora', 'iface_precompute_cash', 'iface_invoicing']
         filtro_search = ['|', ('active','=',True), ('active','=',False)]
         if trigger_id != '':
             filtro_search.append(('id', '=', trigger_id))
@@ -349,7 +349,7 @@ class Sinc_PDV(models.Model):
     def _usuarios(self, conexion, trigger_id = ''):
         res_model = 'res.users'
         campos = ['name', 'login', 'tz', 'notify_email', 'signature', 'barcode', 'pos_security_pin', 'password_crypt']
-        filtro_search = [('company_id', '=', 1), ('default_pos_id', '!=', False)]
+        filtro_search = [('company_id', '=', 1), ('default_pos_id', '!=', False), '|', ('active','=',True), ('active','=',False)]
         if trigger_id != '':
             filtro_search.append(('id', '=', trigger_id))
         filtro_existe = 'login'
@@ -639,14 +639,14 @@ class Sinc_PDV(models.Model):
             # self._pdv(conexion)
             # logging.warn('Transfiriendo usuarios')
             # self._usuarios(conexion)
-            # logging.warn('Transfiriendo productos')
-            # self._productos(conexion)
+            logging.warn('Transfiriendo productos')
+            self._productos(conexion)
             # logging.warn('Transfiriendo pos_gt_extra')
             # self._pos_gt_extra(conexion)
             # logging.warn('Transfiriendo productos')
             # self._productos(conexion)
-            # logging.warn('Transfiriendo lista de materiales')
-            # self._lista_materiales(conexion)
+            logging.warn('Transfiriendo lista de materiales')
+            self._lista_materiales(conexion)
             # logging.warn('Creando ajuste inicial')
             # self._ajuste_inicial(conexion)
             logging.warn('FIN!!!')
@@ -685,6 +685,7 @@ class Sinc_PDV_in(models.Model):
             if limit <= 2:
                 logging.getLogger('LIMIT ... ').warn(limit)
                 inventario_destino_id = conexion['models'].execute_kw(conexion['database'], conexion['uid'], conexion['password'], 'stock.inventory', 'search', [[['name', 'not like', 'Ajuste inicial'],['state', '=', 'done'],['location_id', '=', ubicacion_id]]], {'order': 'date desc', 'limit': 1})
+                logging.getLogger('inventario_destino_id ... ').warn(inventario_destino_id)
                 if inventario_destino_id:
                     inventario_destino = self._leer(conexion, 'stock.inventory', [inventario_destino_id])[0]
                     inventario_origen_id = self.env['stock.inventory'].search([('name', '=', inventario_destino['name'])])
@@ -704,9 +705,8 @@ class Sinc_PDV_in(models.Model):
                         logging.warn('INICIO PREPARAR PRODUCTOS ... ')
                         for linea in self._leer(conexion, 'stock.inventory.line', [inventario_destino['line_ids']]):
                             producto_destino = self._leer(conexion, 'product.product', [linea['product_id'][0]])
-                            producto_origen = self.env['product.product'].search([('default_code', '=', producto_destino[0]['default_code'])])[0]
-
                             logging.getLogger('PRODUCTO DESTINO ....').warn(producto_destino[0]['default_code'])
+                            producto_origen = self.env['product.product'].search([('default_code', '=', producto_destino[0]['default_code']), '|', ('active','=',True), ('active','=',False)])[0]
 
                             line_ids.append((0, 0, {
                                 'location_id': ubicacion_origen.id,
