@@ -286,7 +286,7 @@ class Sinc_PDV(models.Model):
     @api.multi
     def _pdv(self, conexion, trigger_id = ''):
         res_model = 'pos.config'
-        campos = ['name', 'active', 'group_by', 'allow_discount', 'allow_price_change', 'takeout_option', 'ask_tag_number', 'tipo_impresora', 'iface_precompute_cash', 'iface_invoicing', 'cash_control']
+        campos = ['name', 'active', 'group_by', 'allow_discount', 'allow_price_change', 'takeout_option', 'ask_tag_number', 'tipo_impresora', 'iface_precompute_cash', 'iface_invoicing']
         filtro_search = ['|', ('active','=',True), ('active','=',False)]
         if trigger_id != '':
             filtro_search.append(('id', '=', trigger_id))
@@ -350,7 +350,7 @@ class Sinc_PDV(models.Model):
     def _usuarios(self, conexion, trigger_id = ''):
         res_model = 'res.users'
         campos = ['name', 'login', 'tz', 'notify_email', 'signature', 'barcode', 'pos_security_pin', 'password_crypt']
-        filtro_search = [('company_id', '=', 1), ('default_pos_id', '!=', False)]
+        filtro_search = [('company_id', '=', 1), ('default_pos_id', '!=', False), '|', ('active','=',True), ('active','=',False)]
         if trigger_id != '':
             filtro_search.append(('id', '=', trigger_id))
         filtro_existe = 'login'
@@ -640,8 +640,8 @@ class Sinc_PDV(models.Model):
             # self._pdv(conexion)
             # logging.warn('Transfiriendo usuarios')
             # self._usuarios(conexion)
-            # logging.warn('Transfiriendo productos')
-            # self._productos(conexion)
+            logging.warn('Transfiriendo productos')
+            self._productos(conexion)
             # logging.warn('Transfiriendo pos_gt_extra')
             # self._pos_gt_extra(conexion)
             # logging.warn('Transfiriendo productos')
@@ -665,16 +665,16 @@ class Sinc_PDV_in(models.Model):
         for config in self._leer(conexion, 'pos.config', [config_ids]):
 #            if config['stock_location_id'][0] not in ubicacion_ids:
             if config['stock_location_id'][0] not in pos.keys():
-#                logging.getLogger('config.name... ').warn(config['name'])
-#                logging.getLogger('config.stock_location_id... ').warn(config['stock_location_id'][0])
+                logging.getLogger('config.name... ').warn(config['name'])
+                logging.getLogger('config.stock_location_id... ').warn(config['stock_location_id'][0])
 #                ubicacion_ids.append(config['stock_location_id'][0])
                 ubicacion_destino = self._leer(conexion, 'stock.location', [config['stock_location_id'][0]])
                 if ubicacion_destino[0]['barcode']:
-#                    logging.getLogger('ubicacion_destino... ').warn(ubicacion_destino)
+                    logging.getLogger('ubicacion_destino... ').warn(ubicacion_destino)
                     ubicacion_origen = self.env['stock.location'].search([('barcode', '=', ubicacion_destino[0]['barcode'])])
                     if ubicacion_origen:
                         ubicacion_origen = ubicacion_origen[0]
-#                        logging.getLogger('ubicacion_origen... ').warn(ubicacion_origen)
+                        logging.getLogger('ubicacion_origen... ').warn(ubicacion_origen)
                         config_origen = self.env['pos.config'].search([('stock_location_id', '=', ubicacion_origen.id)])
                         if config_origen:
                             config_origen = config_origen[0]
@@ -684,8 +684,9 @@ class Sinc_PDV_in(models.Model):
 #        for ubicacion_id in ubicacion_ids:
         for ubicacion_id in pos:
             if limit <= 2:
-#                logging.getLogger('LIMIT ... ').warn(limit)
+                logging.getLogger('LIMIT ... ').warn(limit)
                 inventario_destino_id = conexion['models'].execute_kw(conexion['database'], conexion['uid'], conexion['password'], 'stock.inventory', 'search', [[['name', 'not like', 'Ajuste inicial'],['state', '=', 'done'],['location_id', '=', ubicacion_id]]], {'order': 'date desc', 'limit': 1})
+                logging.getLogger('inventario_destino_id ... ').warn(inventario_destino_id)
                 if inventario_destino_id:
                     inventario_destino = self._leer(conexion, 'stock.inventory', [inventario_destino_id])[0]
                     inventario_origen_id = self.env['stock.inventory'].search([('name', '=', inventario_destino['name'])])
@@ -693,8 +694,8 @@ class Sinc_PDV_in(models.Model):
 
                         ubicacion_destino = self._leer(conexion, 'stock.location', [inventario_destino['location_id'][0]])
                         ubicacion_origen = self.env['stock.location'].search([('barcode', '=', ubicacion_destino[0]['barcode'])])[0]
-#                        logging.getLogger('ubicacion_destino ...').warn(ubicacion_destino)
-#                        logging.getLogger('ubicacion_origen ...').warn(ubicacion_origen)
+                       logging.getLogger('ubicacion_destino ...').warn(ubicacion_destino)
+                       logging.getLogger('ubicacion_origen ...').warn(ubicacion_origen)
                         logging.getLogger('inventario_destino ...').warn(inventario_destino)
                         logging.getLogger('inventario_destino[date] ...').warn(inventario_destino['date'])
                         logging.getLogger('inventario_destino[date][0:10] ...').warn(inventario_destino['date'][0:10])
@@ -706,12 +707,11 @@ class Sinc_PDV_in(models.Model):
                         dict['filter'] = 'partial'
                         dict['cuenta_analitica_id'] = pos[ubicacion_id]
                         line_ids = []
-#                        logging.warn('INICIO PREPARAR PRODUCTOS ... ')
+                        logging.warn('INICIO PREPARAR PRODUCTOS ... ')
                         for linea in self._leer(conexion, 'stock.inventory.line', [inventario_destino['line_ids']]):
                             producto_destino = self._leer(conexion, 'product.product', [linea['product_id'][0]])
-                            producto_origen = self.env['product.product'].search([('default_code', '=', producto_destino[0]['default_code'])])[0]
-
-#                            logging.getLogger('PRODUCTO DESTINO ....').warn(producto_destino[0]['default_code'])
+                            logging.getLogger('PRODUCTO DESTINO ....').warn(producto_destino[0]['default_code'])
+                            producto_origen = self.env['product.product'].search([('default_code', '=', producto_destino[0]['default_code']), '|', ('active','=',True), ('active','=',False)])[0]
 
                             line_ids.append((0, 0, {
                                 'location_id': ubicacion_origen.id,
@@ -720,21 +720,21 @@ class Sinc_PDV_in(models.Model):
                             }))
                             dict['line_ids'] = line_ids
 
-#                        logging.warn('FIN PREPARAR PRODUCTOS ... ')
+                        logging.warn('FIN PREPARAR PRODUCTOS ... ')
 
                         obj = self.env['stock.inventory'].create(dict)
                         obj.write({'date': inventario_destino['date']})
-#                        logging.getLogger('INVENTARIO CREADO ....').warn(obj)
-#                        logging.getLogger('LIMIT... ').warn(limit)
-#                        logging.getLogger('NOMBRE DESTINO... ').warn(inventario_destino['name'])
-#                        logging.getLogger('FECHA DESTINO... ').warn(inventario_destino['date'])
-#                        logging.getLogger('FECHA ORIGEN... ').warn(obj.date)
-#                        logging.getLogger('INVENTARIO DESTINO ....').warn(inventario_destino)
+                        logging.getLogger('INVENTARIO CREADO ....').warn(obj)
+                        logging.getLogger('LIMIT... ').warn(limit)
+                        logging.getLogger('NOMBRE DESTINO... ').warn(inventario_destino['name'])
+                        logging.getLogger('FECHA DESTINO... ').warn(inventario_destino['date'])
+                        logging.getLogger('FECHA ORIGEN... ').warn(obj.date)
+                        logging.getLogger('INVENTARIO DESTINO ....').warn(inventario_destino)
                         obj.action_start()
-#                        logging.warn('FINALIZADO action_start')
+                        logging.warn('FINALIZADO action_start')
                         obj.action_done()
-#                        logging.warn('FINALIZADO action_done')
-#                        logging.getLogger('FINALIZADO TRASLADO No... ').warn(limit)
+                        logging.warn('FINALIZADO action_done')
+                        logging.getLogger('FINALIZADO TRASLADO No... ').warn(limit)
                         limit += 1
 
 
