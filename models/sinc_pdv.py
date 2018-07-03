@@ -372,8 +372,8 @@ class Sinc_PDV(models.Model):
     @api.multi
     def _productos(self, conexion, trigger_id = ''):
         res_model = 'product.product'
-        campos = ['name', 'sale_ok', 'purchase_ok', 'type', 'default_code', 'barcode', 'lst_price', 'standard_price', 'sale_delay', 'produce_delay', 'available_in_pos', 'to_weight', 'description_sale', 'description_purchase', 'description_picking']
-        filtro_search = [('company_id', '=', 1), ('default_code', '!=', False)]
+        campos = ['name', 'sale_ok', 'purchase_ok', 'type', 'default_code', 'barcode', 'lst_price', 'standard_price', 'sale_delay', 'produce_delay', 'available_in_pos', 'to_weight', 'description_sale', 'description_purchase', 'description_picking', 'active']
+        filtro_search = [('company_id', '=', 1), ('default_code', '!=', False), '|', ('active','=',True), ('active','=',False)]
         if trigger_id != '':
             filtro_search.append(('id', '=', trigger_id))
         filtro_existe = 'default_code'
@@ -644,10 +644,10 @@ class Sinc_PDV(models.Model):
             # self._productos(conexion)
             # logging.warn('Transfiriendo pos_gt_extra')
             # self._pos_gt_extra(conexion)
-            # logging.warn('Transfiriendo productos')
-            # self._productos(conexion)
-            # logging.warn('Transfiriendo lista de materiales')
-            # self._lista_materiales(conexion)
+            logging.warn('Transfiriendo productos')
+            self._productos(conexion)
+            logging.warn('Transfiriendo lista de materiales')
+            self._lista_materiales(conexion)
             # logging.warn('Creando ajuste inicial')
             # self._ajuste_inicial(conexion)
             logging.warn('FIN!!!')
@@ -666,15 +666,12 @@ class Sinc_PDV_in(models.Model):
 #            if config['stock_location_id'][0] not in ubicacion_ids:
             if config['stock_location_id'][0] not in pos.keys():
                 logging.getLogger('config.name... ').warn(config['name'])
-                logging.getLogger('config.stock_location_id... ').warn(config['stock_location_id'][0])
 #                ubicacion_ids.append(config['stock_location_id'][0])
                 ubicacion_destino = self._leer(conexion, 'stock.location', [config['stock_location_id'][0]])
                 if ubicacion_destino[0]['barcode']:
-                    logging.getLogger('ubicacion_destino... ').warn(ubicacion_destino)
                     ubicacion_origen = self.env['stock.location'].search([('barcode', '=', ubicacion_destino[0]['barcode'])])
                     if ubicacion_origen:
                         ubicacion_origen = ubicacion_origen[0]
-                        logging.getLogger('ubicacion_origen... ').warn(ubicacion_origen)
                         config_origen = self.env['pos.config'].search([('stock_location_id', '=', ubicacion_origen.id)])
                         if config_origen:
                             config_origen = config_origen[0]
@@ -694,11 +691,6 @@ class Sinc_PDV_in(models.Model):
 
                         ubicacion_destino = self._leer(conexion, 'stock.location', [inventario_destino['location_id'][0]])
                         ubicacion_origen = self.env['stock.location'].search([('barcode', '=', ubicacion_destino[0]['barcode'])])[0]
-                       logging.getLogger('ubicacion_destino ...').warn(ubicacion_destino)
-                       logging.getLogger('ubicacion_origen ...').warn(ubicacion_origen)
-                        logging.getLogger('inventario_destino ...').warn(inventario_destino)
-                        logging.getLogger('inventario_destino[date] ...').warn(inventario_destino['date'])
-                        logging.getLogger('inventario_destino[date][0:10] ...').warn(inventario_destino['date'][0:10])
                         dict = {}
                         dict['name'] = inventario_destino['name']
                         dict['date'] = inventario_destino['date']
@@ -746,7 +738,7 @@ class Sinc_PDV_in(models.Model):
         else:
             sesion_filtro = [['state', '=', 'closed']]
 
-        sesion_ids = conexion['models'].execute_kw(conexion['database'], conexion['uid'], conexion['password'], 'pos.session', 'search', [sesion_filtro], {'order': 'config_id asc'})
+        sesion_ids = conexion['models'].execute_kw(conexion['database'], conexion['uid'], conexion['password'], 'pos.session', 'search', [sesion_filtro], {'order': 'start_at desc'})
         logging.getLogger('SESION_IDS ...').warn(sesion_ids)
         limit = 1
         sesion_ids_random = random.sample(sesion_ids, len(sesion_ids))
@@ -778,7 +770,7 @@ class Sinc_PDV_in(models.Model):
                             for linea in self._leer(conexion, 'pos.order.line', [lineas_destino_ids]):
                                 producto_destino = self._leer(conexion, 'product.product', [linea['product_id'][0]])[0]
                                 # logging.getLogger('producto_destino... ').warn(producto_destino)
-                                producto_origen = self.env['product.product'].search([('default_code', '=', producto_destino['default_code'])])
+                                producto_origen = self.env['product.product'].search([('default_code', '=', producto_destino['default_code']), '|', ('active','=',True), ('active','=',False)])
                                 # logging.getLogger('producto_origen... ').warn(producto_origen)
                                 key = str(producto_origen.id) + '-' + str(linea['price_unit'])
                                 if key not in lineas_pedido:
