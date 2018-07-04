@@ -390,7 +390,7 @@ class Sinc_PDV(models.Model):
                 if pos_categ_id:
                     obj_dict['pos_categ_id'] = pos_categ_id[0]
 
-            obj_id = self._buscar(conexion, res_model, [[filtro_existe, '=', obj[filtro_existe]]])
+            obj_id = self._buscar(conexion, res_model, [[filtro_existe, '=', obj[filtro_existe]], '|', ['active','=',True], ['active','=',False]])
             logging.warn(obj_id)
             if not obj_id:
 
@@ -465,7 +465,7 @@ class Sinc_PDV(models.Model):
             if not obj_id:
                 products_id = []
                 for line in obj.products_id:
-                    product_id = self._buscar(conexion, 'product.product', [['default_code', '=', line.product_id.default_code]])
+                    product_id = self._buscar(conexion, 'product.product', [['default_code', '=', line.product_id.default_code], '|', ['active','=',True], ['active','=',False]])
                     if product_id:
                         products_id.append((0, 0, {
                             'product_id': product_id[0],
@@ -482,7 +482,7 @@ class Sinc_PDV(models.Model):
 
                 products_id = []
                 for line in obj.products_id:
-                    product_id = self._buscar(conexion, 'product.product', [['default_code', '=', line.product_id.default_code]])
+                    product_id = self._buscar(conexion, 'product.product', [['default_code', '=', line.product_id.default_code], '|', ['active','=',True], ['active','=',False]])
                     if product_id:
                         products_id.append((0, 0, {
                             'product_id': product_id[0],
@@ -497,22 +497,22 @@ class Sinc_PDV(models.Model):
     def _lista_materiales(self, conexion, trigger_id = ''):
         res_model = 'mrp.bom'
         campos = ['code', 'product_qty', 'type']
-        filtro_search = [('active', '=', True), ('code', '!=', False)]
+        filtro_search = [('active', '=', True), ('code', '!=', False), '|', ('active','=',True), ('active','=',False)]
         if trigger_id != '':
             filtro_search.append(('id', '=', trigger_id))
         filtro_existe = 'code'
         for obj in self.env[res_model].search(filtro_search, order='id asc'):
             logging.getLogger('Lista').warn(obj.code)
             obj_dict = self._preparar_diccionario2(obj, campos)
-            product_tmpl_id = self._buscar(conexion, 'product.template', [['default_code', '=', obj.product_tmpl_id.default_code]])
+            product_tmpl_id = self._buscar(conexion, 'product.template', [['default_code', '=', obj.product_tmpl_id.default_code], '|', ['active','=',True], ['active','=',False]])
             if product_tmpl_id:
                 obj_dict['product_tmpl_id'] = product_tmpl_id[0]
 
-                obj_id = self._buscar(conexion, res_model, [[filtro_existe, '=', obj[filtro_existe]]])
+                obj_id = self._buscar(conexion, res_model, [[filtro_existe, '=', obj[filtro_existe], '|', ['active','=',True], ['active','=',False]]])
                 if not obj_id:
                     bom_line_ids = []
                     for line in obj.bom_line_ids:
-                        product_id = self._buscar(conexion, 'product.product', [['default_code', '=', line.product_id.default_code]])
+                        product_id = self._buscar(conexion, 'product.product', [['default_code', '=', line.product_id.default_code], '|', ['active','=',True], ['active','=',False]])
                         logging.getLogger('PRODUCT_ID ').warn(product_id)
                         if product_id:
                             bom_line_ids.append((0, 0, {
@@ -528,7 +528,7 @@ class Sinc_PDV(models.Model):
 
                     bom_line_ids = []
                     for line in obj.bom_line_ids:
-                        product_id = self._buscar(conexion, 'product.product', [['default_code', '=', line.product_id.default_code]])
+                        product_id = self._buscar(conexion, 'product.product', [['default_code', '=', line.product_id.default_code], '|', ['active','=',True], ['active','=',False]])
                         if product_id:
                             bom_line_ids.append((0, 0, {
                                 'product_id': product_id[0],
