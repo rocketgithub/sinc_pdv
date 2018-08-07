@@ -415,7 +415,7 @@ class Sinc_PDV_Inventario(models.Model):
             ubicacion_origen_id = config_origen.stock_location_id.id
             ubicacion_destino_id = config_destino['stock_location_id'][0]
 
-            inventario_destino_id = self.buscar_destino(conexion, 'stock.inventory', [['name', 'not like', 'Ajuste inicial'],['state', '=', 'done'],['location_id', '=', ubicacion_destino_id],['date', '>', ultima_sesion_destino['stop_at']]], {'order': 'date desc', 'limit': 1})
+            inventario_destino_id = self.buscar_destino(conexion, 'stock.inventory', [['name', 'not like', 'Ajuste inicial'],['sinc_id', '=', 0],['state', '=', 'done'],['location_id', '=', ubicacion_destino_id],['date', '>', ultima_sesion_destino['stop_at']]], {'order': 'date desc', 'limit': 1})
             if inventario_destino_id:
                 inventario_destino = self.leer_destino(conexion, 'stock.inventory', [inventario_destino_id])[0]
                 if inventario_destino['sinc_id'] == 0:
