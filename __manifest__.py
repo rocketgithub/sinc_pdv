@@ -22,6 +22,7 @@
     'depends': ['base','base_setup'],
 
     'data': [
+        'wizard/asistente_origen_destino.xml',
         'views/base_config_settings_views.xml',
     ],
 }

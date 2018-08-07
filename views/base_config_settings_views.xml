@@ -12,13 +12,16 @@
                             <field name="database"/>
                             <field name="username"/>
                             <field name="password"/>
-                            <button string="Sincronización inicial" type="object" name="sincronizacion_inicial" class="oe_highlight"/>
-                            <button string="Sincronización diaria" type="object" name="sincronizacion_diaria" class="oe_highlight"/>
+                            <button name="%(act_sinc_out)d" string="Sincronización Origen - Destino"
+                                type="action" class="btn-primary"/>
+                            <button string="Sincronización diaria" type="object" name="sincronizacion_in" class="oe_highlight"/>
                         </group>
+<!--
                         <group>
                             <button string="Sincronización Par" type="object" name="sincronizacion_par" class="oe_highlight"/>
                             <button string="Sincronización Impar" type="object" name="sincronizacion_impar" class="oe_highlight"/>
                         </group>
+-->
                     </group>
                 </group>
             </field>

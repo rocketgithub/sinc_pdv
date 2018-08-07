@@ -61,18 +61,18 @@ class BaseConfigSettings(models.TransientModel):
         dict['password'] = self.env["ir.config_parameter"].get_param("sinc.password")
         return dict
 
-    def sincronizacion_inicial(self):
+    def sincronizacion_out(self, transferencias = {}):
         sinc_obj = self.env['sinc_pdv.out']
-        sinc_obj.iniciar(self.datos_conexion())
+        sinc_obj.iniciar_transferencia(self.datos_conexion(), transferencias)
 
-    def sincronizacion_diaria(self):
+    def sincronizacion_in(self):
         sinc_obj = self.env['sinc_pdv.in']
-        sinc_obj.iniciar(self.datos_conexion())
+        sinc_obj.iniciar_transferencia(self.datos_conexion())
 
-    def sincronizacion_par(self):
-        sinc_obj = self.env['sinc_pdv.in']
-        sinc_obj.ordenes_pdv_par(self.datos_conexion())
+#    def sincronizacion_par(self):
+#        sinc_obj = self.env['sinc_pdv.in']
+#        sinc_obj.ordenes_pdv_par(self.datos_conexion())
 
-    def sincronizacion_impar(self):
-        sinc_obj = self.env['sinc_pdv.in']
-        sinc_obj.ordenes_pdv_impar(self.datos_conexion())
+#    def sincronizacion_impar(self):
+#        sinc_obj = self.env['sinc_pdv.in']
+#        sinc_obj.ordenes_pdv_impar(self.datos_conexion())
