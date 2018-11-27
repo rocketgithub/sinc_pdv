@@ -497,7 +497,7 @@ class Sinc_PDV_Inventario(models.Model):
                     sinc_ubicaciones_obj = self.env['sinc_pdv.stock.location']
 
                     ubicacion_destino = self.leer_destino(conexion, sinc_ubicaciones_obj.res_model(), [inventario_destino['location_id'][0]])
-                    ubicacion_origen = self.env[sinc_ubicaciones_obj.res_model()].search([('id', '=', ubicacion_destino[0]['sinc_id'])])[0]
+                    ubicacion_origen = self.env[sinc_ubicaciones_obj.res_model()].search([('id', '=', ubicacion_destino[0]['sinc_id']), '|', ('active','=',True), ('active','=',False)])[0]
                     dict = {}
                     dict['name'] = inventario_destino['name']
                     dict['date'] = inventario_destino['date']

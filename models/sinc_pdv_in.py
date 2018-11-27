@@ -25,7 +25,7 @@ class Sinc_PDV_in(models.Model):
         config_ids = [x for x in config_ids if x % 2 == restante]
         pos = 0
         procesado = False
-        while not procesado:
+        while not procesado and pos < len(config_ids):
             logging.getLogger('config_ids').warn(config_ids)
 
             logging.warn('INICIO in_crear_pedido '+str(restante))
@@ -38,11 +38,11 @@ class Sinc_PDV_in(models.Model):
             res2 = sinc_stock_inventory_obj.in_ajuste_inventario(conexion, config_ids[pos])
             logging.warn('FIN in_ajuste_inventario '+str(restante))
 
+            pos += 1
+
             if res1 == True or res2 == True:
                 self.modificar_destino(conexion, 'pos.config', config_ids[pos], {'sinc_date': time.strftime('%Y-%m-%d %H:%M:%S')})
                 procesado = True
-            else:
-                pos += 1
 
         logging.getLogger('res1... '+str(restante)).warn(res1)
         logging.getLogger('res2... '+str(restante)).warn(res2)
