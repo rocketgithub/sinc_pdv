@@ -42,16 +42,24 @@ class Sinc_PDV_out(models.Model):
             self.transferir_datos(conexion, 'stock.location')
         if transferencias['pos_sat_resolucion']:
             self.transferir_datos(conexion, 'pos_sat.resolucion')
+        if transferencias['clientes']:
+            self.transferir_datos(conexion, 'res.partner')
         if transferencias['diarios']:
             self.transferir_datos(conexion, 'account.journal')
         if transferencias['categorias_pdv']:
             self.transferir_datos(conexion, 'pos.category')
         if transferencias['categorias_producto']:
             self.transferir_datos(conexion, 'product.category')
+        if transferencias['lista_precios']:
+            self.transferir_datos(conexion, 'product.pricelist')
         if transferencias['pdv']:
             self.transferir_datos(conexion, 'pos.config')
         if transferencias['usuarios']:
             self.transferir_datos(conexion, 'res.users')
+        if transferencias['categorias_unidades_medida']:
+            self.transferir_datos(conexion, 'product.uom.categ')
+        if transferencias['unidades_medida']:
+            self.transferir_datos(conexion, 'product.uom')
         if transferencias['productos']:
             self.transferir_datos(conexion, 'product.product')
 #            sinc_v1_obj = self.env['sinc_pdv.v1']

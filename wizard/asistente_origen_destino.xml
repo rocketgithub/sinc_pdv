@@ -9,18 +9,22 @@
                     <group>
                         <field name="ubicaciones"/>
                         <field name="pos_sat_resolucion"/>
+                        <field name="clientes"/>
                         <field name="diarios"/>
                         <field name="categorias_pdv"/>
                         <field name="categorias_producto"/>
-                        <field name="pdv"/>
+                        <field name="categorias_unidades_medida"/>
+                        <field name="unidades_medida"/>
                     </group>
                     <group>
+                        <field name="lista_precios"/>
+                        <field name="pdv"/>
                         <field name="usuarios"/>
                         <field name="productos"/>
                         <field name="productos_template"/>
                         <field name="pos_gt_extra"/>
                         <field name="lista_materiales"/>
-                        <field name="ajuste_inicial"/>
+                        <!-- <field name="ajuste_inicial"/> -->
                     </group>
                 </group>
                 <footer>
