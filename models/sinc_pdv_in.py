@@ -15,35 +15,35 @@ class Sinc_PDV_in(models.Model):
     _inherit = 'sinc_pdv.base'
 
     @api.multi
-    def iniciar_transferencia(self, conexion, model = '', obj = ''):
+    def iniciar_transferencia(self, conexion, model = '', obj = '', restante = 0):
         common = xmlrpclib.ServerProxy('{}/xmlrpc/2/common'.format(conexion['url']))
         conexion['uid'] = common.authenticate(conexion['database'], conexion['username'], conexion['password'], {})
         conexion['models'] = xmlrpclib.ServerProxy('{}/xmlrpc/2/object'.format(conexion['url']))
 
-        logging.warn('INICIO SINCRONIZACION PDV IN')
+        logging.warn('INICIO SINCRONIZACION PDV IN '+str(restante))
         config_ids = self.buscar_destino(conexion, 'pos.config', [], {'order': 'sinc_date asc'})
-        pos = 0 
+        config_ids = [x for x in config_ids if x % 2 == restante]
+        pos = 0
         procesado = False
-        while not procesado:
+        while not procesado and pos < len(config_ids):
             logging.getLogger('config_ids').warn(config_ids)
 
-            logging.warn('INICIO in_crear_pedido')
+            logging.warn('INICIO in_crear_pedido '+str(restante))
             sinc_pdv_obj = self.env[self.modelo_relacionado('pos.config')]
             res1 = sinc_pdv_obj.in_crear_pedido(conexion, config_ids[pos])
-            logging.warn('FIN in_crear_pedido')
+            logging.warn('FIN in_crear_pedido '+str(restante))
 
-            logging.warn('INICIO in_ajuste_inventario')
+            logging.warn('INICIO in_ajuste_inventario '+str(restante))
             sinc_stock_inventory_obj = self.env[self.modelo_relacionado('stock.inventory')]
             res2 = sinc_stock_inventory_obj.in_ajuste_inventario(conexion, config_ids[pos])
-            logging.warn('FIN in_ajuste_inventario')
-            
+            logging.warn('FIN in_ajuste_inventario '+str(restante))
+
+            pos += 1
+
             if res1 == True or res2 == True:
                 self.modificar_destino(conexion, 'pos.config', config_ids[pos], {'sinc_date': time.strftime('%Y-%m-%d %H:%M:%S')})
                 procesado = True
-            else:
-                pos += 1
-        
-        logging.getLogger('res1... ').warn(res1)
-        logging.getLogger('res2... ').warn(res2)
-        logging.warn('FIN SINCRONIZACION PDV IN!!!')
 
+        logging.getLogger('res1... '+str(restante)).warn(res1)
+        logging.getLogger('res2... '+str(restante)).warn(res2)
+        logging.warn('FIN SINCRONIZACION PDV IN!!! '+str(restante))

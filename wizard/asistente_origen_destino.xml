@@ -20,7 +20,7 @@
                         <field name="productos_template"/>
                         <field name="pos_gt_extra"/>
                         <field name="lista_materiales"/>
-                        <field name="ajuste_inicial"/>
+                        <!-- <field name="ajuste_inicial"/> -->
                     </group>
                 </group>
                 <footer>

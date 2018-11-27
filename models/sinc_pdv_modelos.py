@@ -24,8 +24,8 @@ class Sinc_PDV_Ubicaciones(models.Model):
     # El diccionario puede contener las siguientes llaves: 'estandar', 'm2o', 'o2m', 'm2m'.
     # dict['estandar']: lista con campos que no son Many2one, One2many o Many2many. Ejemplo: campos tipo Integer, Char, Boolean, etc.
     # dict['m2o']: lista con campos Many2one. El formato es ['campo','modelo']
-    # dict['o2m']: 
-    # dict['m2m']: 
+    # dict['o2m']:
+    # dict['m2m']:
     def campos(self):
         dict = {}
         dict['estandar'] = ['active', 'name', 'usage', 'scrap_location', 'return_location', 'posx', 'posy', 'posz', 'barcode']
@@ -73,10 +73,10 @@ class Sinc_PDV_Diarios(models.Model):
         if status_transferir['funcion'] == 'crear':
             self.out_copiar_secuencia(conexion, diario_origen, status_transferir['obj_id'])
         return status_transferir
-        
+
     def out_copiar_secuencia(self, conexion, diario_origen, nuevo_diario_destino_id):
         diario_destino = self.leer_destino(conexion, self.res_model(), [nuevo_diario_destino_id])[0]
-        secuencia_destino_id = diario_destino['sequence_id'][0]        
+        secuencia_destino_id = diario_destino['sequence_id'][0]
         sinc_resolucion_obj = self.env['sinc_pdv.pos_sat.resolucion']
         resolucion_id = self.buscar_destino(conexion, sinc_resolucion_obj.res_model(), sinc_resolucion_obj.filtro_buscar_destino(conexion, diario_origen.sequence_id.resolucion_id))
         if resolucion_id:
@@ -137,7 +137,7 @@ class Sinc_PDV_Punto_De_Venta(models.Model):
         logging.getLogger('SESION_IDS ...').warn(sesion_ids)
         res = False
         if sesion_ids:
-            for sesion_id in sesion_ids:
+            for sesion_id in sesion_ids[:2]:
                 logging.getLogger('SESION_ID...').warn(sesion_id)
                 sesion_destino = self.leer_destino(conexion, 'pos.session', [sesion_id], {'fields': ['name','config_id','id','start_at']})[0]
                 pos_config_destino = self.leer_destino(conexion, 'pos.config', [sesion_destino['config_id'][0]])
@@ -205,7 +205,7 @@ class Sinc_PDV_Punto_De_Venta(models.Model):
                         diario_origen = self.env['account.journal'].search([('code', '=', journal_code)])
                         obj.add_payment({'journal': diario_origen.id ,'amount': pagos[journal_code]})
                         restante -= pagos[journal_code]
-                        
+
                     if restante > 0.009:
                         obj.add_payment({'journal': 119 ,'amount': restante})
 
@@ -219,7 +219,7 @@ class Sinc_PDV_Punto_De_Venta(models.Model):
 
                     logging.warn('action_invoice_open')
                     obj.invoice_id.sudo().action_invoice_open()
-                    obj.account_move = obj.invoice_id.move_id                
+                    obj.account_move = obj.invoice_id.move_id
 
                 logging.warn('action_pos_session_closing_control')
                 sesion_origen_id.action_pos_session_closing_control()
@@ -229,7 +229,7 @@ class Sinc_PDV_Punto_De_Venta(models.Model):
                 res = True
         return res
 
-        
+
 class Sinc_PDV_Usuarios(models.Model):
     _name = 'sinc_pdv.res.users'
     _inherit = 'sinc_pdv.base'
@@ -273,7 +273,7 @@ class Sinc_PDV_Productos(models.Model):
     def out_relacionar_product_template(self, conexion, product_origen, producto_destino_id):
         producto_destino = self.leer_destino(conexion, self.res_model(), [producto_destino_id])[0]
         product_template_destino_id = producto_destino['product_tmpl_id'][0]
-        
+
         sinc_productos_tmpl_obj = self.env[self.modelo_relacionado('product.template')]
         sinc_productos_tmpl_obj.modificar_destino(conexion, sinc_productos_tmpl_obj.res_model(), product_template_destino_id, {'sinc_id': product_origen.product_tmpl_id.id})
 
@@ -366,7 +366,7 @@ class Sinc_PDV_Inventario(models.Model):
             """)
         ubicaciones = {}
         for location_id, product_id, product_qty in self._cr.fetchall():
-        
+
             ubicacion_bd_origen = self.env['stock.location'].browse(location_id)
             producto_bd_origen = self.env['product.product'].browse(product_id)
             ubicacion_bd_destino_id = self.buscar_destino(db, uid, password, models, 'stock.location', ['sinc_id', '=', ubicacion_bd_origen.id])
@@ -379,7 +379,7 @@ class Sinc_PDV_Inventario(models.Model):
                     dict = {}
                     dict['name'] = 'Ajuste inicial - ' + ubicacion_bd_origen.name
                     dict['location_id'] = ubicacion_bd_destino_id
-                    
+
                     line_ids = []
                     line_ids.append((0, 0, {
                         'location_id': ubicacion_bd_destino_id,
@@ -392,7 +392,7 @@ class Sinc_PDV_Inventario(models.Model):
                     ubicaciones[location_id] = obj_id
                 else:
                     obj_id = ubicaciones[location_id]
-                    
+
                     line_ids = []
                     line_ids.append((0, 0, {
                         'location_id': ubicacion_bd_destino_id,
@@ -408,7 +408,7 @@ class Sinc_PDV_Inventario(models.Model):
         ultima_sesion_destino_id = self.buscar_destino(conexion, 'pos.session', [['config_id', '=', config_id], ['sinc_id', '!=', 0], ['state', '=', 'closed']], {'order': 'stop_at desc', 'limit': 1})
         if ultima_sesion_destino_id:
             ultima_sesion_destino = self.leer_destino(conexion, 'pos.session', [ultima_sesion_destino_id])[0]
-            
+
             config_destino = self.leer_destino(conexion, 'pos.config', [config_id])[0]
             config_origen = self.env['pos.config'].search([('id', '=', config_destino['sinc_id'])])
             analytic_account_id = config_origen.analytic_account_id.id
@@ -423,7 +423,7 @@ class Sinc_PDV_Inventario(models.Model):
                     sinc_ubicaciones_obj = self.env['sinc_pdv.stock.location']
 
                     ubicacion_destino = self.leer_destino(conexion, sinc_ubicaciones_obj.res_model(), [inventario_destino['location_id'][0]])
-                    ubicacion_origen = self.env[sinc_ubicaciones_obj.res_model()].search([('id', '=', ubicacion_destino[0]['sinc_id'])])[0]
+                    ubicacion_origen = self.env[sinc_ubicaciones_obj.res_model()].search([('id', '=', ubicacion_destino[0]['sinc_id']), '|', ('active','=',True), ('active','=',False)])[0]
                     dict = {}
                     dict['name'] = inventario_destino['name']
                     dict['date'] = inventario_destino['date']
@@ -452,4 +452,3 @@ class Sinc_PDV_Inventario(models.Model):
                     self.modificar_destino(conexion, 'stock.inventory', inventario_destino['id'], {'sinc_id': obj.id})
                     res = True
         return res
-

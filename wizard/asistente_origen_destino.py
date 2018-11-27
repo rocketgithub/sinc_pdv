@@ -8,18 +8,18 @@ class SincOrigenDestino(models.TransientModel):
     _name = 'sinc_pdv.sinc_origen_destino_wizard'
 
     ubicaciones = fields.Boolean('Ubicaciones')
-    pos_sat_resolucion = fields.Boolean('POS SAT Resolucion')
+    pos_sat_resolucion = fields.Boolean('Resoluciones SAT')
     diarios = fields.Boolean('Diarios')
-    categorias_pdv = fields.Boolean('Categorias PDV')
+    categorias_pdv = fields.Boolean('Categorias PdV')
     categorias_producto = fields.Boolean('Categorias producto')
     pdv = fields.Boolean('Puntos de Venta')
     usuarios = fields.Boolean('Usuarios')
     productos = fields.Boolean('Productos')
-    productos_template = fields.Boolean('Productos template')
-    pos_gt_extra = fields.Boolean('POS GT extra')
-    lista_materiales = fields.Boolean('Lista de materiales')
-    ajuste_inicial = fields.Boolean('Ajuste inicial')
-    
+    productos_template = fields.Boolean('Productos Padre')
+    pos_gt_extra = fields.Boolean('Extras')
+    lista_materiales = fields.Boolean('Listas de materiales')
+    ajuste_inicial = fields.Boolean('Ajustes iniciales')
+
     @api.multi
     def sinc_origen_destino(self):
         logging.warn('SINCRONIZACION ORIGEN DESTINO')
