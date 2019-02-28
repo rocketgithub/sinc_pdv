@@ -92,8 +92,9 @@ class Sinc_PDV_Diarios(models.Model):
 
     def transferir(self, conexion, diario_origen):
         status_transferir = super(Sinc_PDV_Diarios, self).transferir(conexion, diario_origen)
-        if status_transferir['funcion'] == 'crear':
-            self.out_copiar_secuencia(conexion, diario_origen, status_transferir['obj_id'])
+        # if status_transferir['funcion'] == 'crear':
+        #     self.out_copiar_secuencia(conexion, diario_origen, status_transferir['obj_id'])
+        self.out_copiar_secuencia(conexion, diario_origen, status_transferir['obj_id'])
         return status_transferir
 
     def out_copiar_secuencia(self, conexion, diario_origen, nuevo_diario_destino_id):
@@ -136,7 +137,7 @@ class Sinc_PDV_Categorias_Producto(models.Model):
     def filtro_base_origen(self):
         return []
 
-        
+
 class Sinc_PDV_Lista_Precios(models.Model):
     _name = 'sinc_pdv.product.pricelist'
     _inherit = 'sinc_pdv.base'
@@ -303,7 +304,7 @@ class Sinc_PDV_Categorias_Unidades_Medida(models.Model):
     def filtro_base_origen(self):
         return []
 
-        
+
 class Sinc_PDV_Unidades_Medida(models.Model):
     _name = 'sinc_pdv.product.uom'
     _inherit = 'sinc_pdv.base'
@@ -331,7 +332,7 @@ class Sinc_PDV_Productos(models.Model):
     def campos(self):
         dict = {}
         dict['estandar'] = ['active', 'name', 'sale_ok', 'purchase_ok', 'type', 'default_code', 'barcode', 'lst_price', 'standard_price', 'sale_delay', 'produce_delay', 'available_in_pos', 'to_weight', 'description_sale', 'description_purchase', 'description_picking']
-        dict['m2o'] = [['categ_id', 'product.category'], ['pos_categ_id', 'pos.category'], ['uom_id', 'product.uom']]
+        dict['m2o'] = [['categ_id', 'product.category'], ['pos_categ_id', 'pos.category'], ['uom_id', 'product.uom'], ['uom_po_id', 'product.uom']]
         dict['m2m'] = [['taxes_id', 'account.tax'], ['supplier_taxes_id', 'account.tax']]
         return dict
 
@@ -479,50 +480,52 @@ class Sinc_PDV_Inventario(models.Model):
 
     def in_ajuste_inventario(self, conexion, config_id):
         res = False
-        ultima_sesion_destino_id = self.buscar_destino(conexion, 'pos.session', [['config_id', '=', config_id], ['sinc_id', '!=', 0], ['state', '=', 'closed']], {'order': 'stop_at desc', 'limit': 1})
+        ultima_sesion_destino_id = self.buscar_destino(conexion, 'pos.session', [['config_id', '=', config_id]], {'order': 'stop_at desc', 'limit': 1})
         if ultima_sesion_destino_id:
             ultima_sesion_destino = self.leer_destino(conexion, 'pos.session', [ultima_sesion_destino_id])[0]
+            logging.warn("ultima_sesion_destino['sinc_id']: " + str(ultima_sesion_destino['sinc_id']))
 
-            config_destino = self.leer_destino(conexion, 'pos.config', [config_id])[0]
-            config_origen = self.env['pos.config'].search([('id', '=', config_destino['sinc_id'])])
-            analytic_account_id = config_origen.analytic_account_id.id
-            ubicacion_origen_id = config_origen.stock_location_id.id
-            ubicacion_destino_id = config_destino['stock_location_id'][0]
+            if ultima_sesion_destino['sinc_id'] != 0:
+                config_destino = self.leer_destino(conexion, 'pos.config', [config_id])[0]
+                config_origen = self.env['pos.config'].search([('id', '=', config_destino['sinc_id'])])
+                analytic_account_id = config_origen.analytic_account_id.id
+                ubicacion_origen_id = config_origen.stock_location_id.id
+                ubicacion_destino_id = config_destino['stock_location_id'][0]
 
-            inventario_destino_id = self.buscar_destino(conexion, 'stock.inventory', [['name', 'not like', 'Ajuste inicial'],['sinc_id', '=', 0],['state', '=', 'done'],['location_id', '=', ubicacion_destino_id],['date', '>', ultima_sesion_destino['stop_at']]], {'order': 'date desc', 'limit': 1})
-            if inventario_destino_id:
-                inventario_destino = self.leer_destino(conexion, 'stock.inventory', [inventario_destino_id])[0]
-                if inventario_destino['sinc_id'] == 0:
+                inventario_destino_id = self.buscar_destino(conexion, 'stock.inventory', [['name', 'not like', 'Ajuste inicial'], ['sinc_id', '=', 0], ['state', '=', 'done'], ['location_id', '=', ubicacion_destino_id], ['date', '>', ultima_sesion_destino['stop_at']]], {'order': 'date desc', 'limit': 1})
+                if inventario_destino_id:
+                    inventario_destino = self.leer_destino(conexion, 'stock.inventory', [inventario_destino_id])[0]
+                    if inventario_destino['sinc_id'] == 0:
 
-                    sinc_ubicaciones_obj = self.env['sinc_pdv.stock.location']
+                        sinc_ubicaciones_obj = self.env['sinc_pdv.stock.location']
 
-                    ubicacion_destino = self.leer_destino(conexion, sinc_ubicaciones_obj.res_model(), [inventario_destino['location_id'][0]])
-                    ubicacion_origen = self.env[sinc_ubicaciones_obj.res_model()].search([('id', '=', ubicacion_destino[0]['sinc_id']), '|', ('active','=',True), ('active','=',False)])[0]
-                    dict = {}
-                    dict['name'] = inventario_destino['name']
-                    dict['date'] = inventario_destino['date']
-                    dict['accounting_date'] = parser.parse(inventario_destino['date']) - datetime.timedelta(hours=6)
-                    dict['location_id'] = ubicacion_origen.id
-                    dict['filter'] = 'partial'
-                    dict['cuenta_analitica_id'] = analytic_account_id
-                    line_ids = []
-                    for linea in self.leer_destino(conexion, 'stock.inventory.line', [inventario_destino['line_ids']]):
-                        producto_destino = self.leer_destino(conexion, 'product.product', [linea['product_id'][0]])
-                        producto_origen = self.env['product.product'].search([('id', '=', producto_destino[0]['sinc_id']), '|', ('active','=',True), ('active','=',False)])[0]
+                        ubicacion_destino = self.leer_destino(conexion, sinc_ubicaciones_obj.res_model(), [inventario_destino['location_id'][0]])
+                        ubicacion_origen = self.env[sinc_ubicaciones_obj.res_model()].search([('id', '=', ubicacion_destino[0]['sinc_id']), '|', ('active','=',True), ('active','=',False)])[0]
+                        dict = {}
+                        dict['name'] = inventario_destino['name']
+                        dict['date'] = inventario_destino['date']
+                        dict['accounting_date'] = parser.parse(inventario_destino['date']) - datetime.timedelta(hours=6)
+                        dict['location_id'] = ubicacion_origen.id
+                        dict['filter'] = 'partial'
+                        dict['cuenta_analitica_id'] = analytic_account_id
+                        line_ids = []
+                        for linea in self.leer_destino(conexion, 'stock.inventory.line', [inventario_destino['line_ids']]):
+                            producto_destino = self.leer_destino(conexion, 'product.product', [linea['product_id'][0]])
+                            producto_origen = self.env['product.product'].search([('id', '=', producto_destino[0]['sinc_id']), '|', ('active','=',True), ('active','=',False)])[0]
 
-                        line_ids.append((0, 0, {
-                            'location_id': ubicacion_origen.id,
-                            'product_id': producto_origen.id,
-                            'product_qty': linea['product_qty'] if linea['product_qty'] >= 0 else 0,
-                        }))
-                        dict['line_ids'] = line_ids
+                            line_ids.append((0, 0, {
+                                'location_id': ubicacion_origen.id,
+                                'product_id': producto_origen.id,
+                                'product_qty': linea['product_qty'] if linea['product_qty'] >= 0 else 0,
+                            }))
+                            dict['line_ids'] = line_ids
 
-                    obj = self.env['stock.inventory'].create(dict)
-                    obj.write({'date': inventario_destino['date']})
-                    logging.warn('action_start')
-                    obj.action_start()
-                    logging.warn('action_done')
-                    obj.action_done()
-                    self.modificar_destino(conexion, 'stock.inventory', inventario_destino['id'], {'sinc_id': obj.id})
-                    res = True
+                        obj = self.env['stock.inventory'].create(dict)
+                        obj.write({'date': inventario_destino['date']})
+                        logging.warn('action_start')
+                        obj.action_start()
+                        logging.warn('action_done')
+                        obj.action_done()
+                        self.modificar_destino(conexion, 'stock.inventory', inventario_destino['id'], {'sinc_id': obj.id})
+                        res = True
         return res

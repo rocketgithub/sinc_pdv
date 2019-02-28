@@ -21,6 +21,7 @@ class Sinc_PDV_out(models.Model):
         x = 1
         for obj_origen in self.env[sinc_obj.res_model()].search(sinc_obj.filtro_base_origen(), order='id asc'):
             logging.getLogger('No... ').warn(x)
+            logging.getLogger('ID... ').warn(obj_origen.id)
             x += 1
             sinc_obj.transferir(conexion, obj_origen)
 
@@ -28,7 +29,7 @@ class Sinc_PDV_out(models.Model):
     def ajuste_inicial(self, conexion):
         sinc_stock_inventory_obj = self.env['sinc_pdv.inventario']
         sinc_stock_inventory_obj.out_ajuste_inicial(conexion)
-    
+
     # La funcion iniciar() es la funcion que se ejecuta cuando desde la interfaz de Odoo se presiona el boton para tranferir
     # informacion desde el servidor origen hacia el servidor destino.
     @api.multi
@@ -73,5 +74,3 @@ class Sinc_PDV_out(models.Model):
         if transferencias['ajuste_inicial']:
             self.ajuste_inicial(conexion)
         logging.warn('FIN SINCRONIZACION PDV!!!')
-        
-

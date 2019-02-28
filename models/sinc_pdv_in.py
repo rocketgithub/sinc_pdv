@@ -22,7 +22,7 @@ class Sinc_PDV_in(models.Model):
 
         logging.warn('INICIO SINCRONIZACION PDV IN '+str(restante))
         config_ids = self.buscar_destino(conexion, 'pos.config', [], {'order': 'sinc_date asc'})
-        config_ids = [x for x in config_ids if x % 2 == restante]
+        config_ids = [x for x in config_ids if x % 3 == restante]
         pos = 0
         procesado = False
         while not procesado and pos < len(config_ids):

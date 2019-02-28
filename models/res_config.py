@@ -69,10 +69,14 @@ class BaseConfigSettings(models.TransientModel):
         sinc_obj = self.env['sinc_pdv.in']
         sinc_obj.iniciar_transferencia(self.datos_conexion())
 
-    def sincronizacion_in_par(self):
+    def sincronizacion_in0(self):
         sinc_obj = self.env['sinc_pdv.in']
         sinc_obj.iniciar_transferencia(self.datos_conexion(), restante = 0)
 
-    def sincronizacion_in_impar(self):
+    def sincronizacion_in1(self):
         sinc_obj = self.env['sinc_pdv.in']
         sinc_obj.iniciar_transferencia(self.datos_conexion(), restante = 1)
+
+    def sincronizacion_in2(self):
+        sinc_obj = self.env['sinc_pdv.in']
+        sinc_obj.iniciar_transferencia(self.datos_conexion(), restante = 2)
