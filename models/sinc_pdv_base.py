@@ -2,7 +2,7 @@
 
 from odoo import models, fields, api
 from odoo.exceptions import UserError
-import xmlrpclib
+#import xmlrpclib
 import datetime
 import urllib, base64
 import logging
@@ -17,7 +17,7 @@ from dateutil import parser
 # Ejemplo:
 # stock.location -> sinc_pdv.stock.location
 # Cada una de estas nuevas clases tiene funciones propias, y funciones heredadas de sinc_pdv.base.
-class Sinc_Base(models.Model):
+class Sinc_Base(models.AbstractModel):
     _name = 'sinc_pdv.base'
 
     def modelo_relacionado(self, res_model):
@@ -46,7 +46,7 @@ class Sinc_Base(models.Model):
     # ids: lista con ids a modificar del modelo.
     def modificar_destino(self, conexion, res_model, id, datos):
         conexion['models'].execute_kw(conexion['database'], conexion['uid'], conexion['password'], res_model, 'write', [[id], datos])
-        
+
     # La funcion eliminar_destino elimina uno o varios registros del servidor destino.
     # res_model: modelo del cual se va a leer el registros.
     # ids: lista con ids a eliminar.
@@ -67,7 +67,7 @@ class Sinc_Base(models.Model):
     # La funcion buscar_destino devuelve un array de ids, como resultado de una busqueda en el servidor destino.
     # res_model: modelo del cual se va a leer el registros.
     # filtro: el filtro que se necesita aplicar al search en la busqueda.
-    # extras (opcional): diccionario con variables extras para la busqueda. Ejemplo: {'order': 'date desc', 'limit': 1} 
+    # extras (opcional): diccionario con variables extras para la busqueda. Ejemplo: {'order': 'date desc', 'limit': 1}
     @api.multi
     def buscar_destino(self, conexion, res_model, filtro, extras = {}):
         ids = conexion['models'].execute_kw(conexion['database'], conexion['uid'], conexion['password'], res_model, 'search', [filtro], extras)
@@ -82,7 +82,7 @@ class Sinc_Base(models.Model):
     def ejecutar_funcion_destino(self, conexion, res_model, funcion, id):
         conexion['models'].execute_kw(conexion['database'], conexion['uid'], conexion['password'], res_model, funcion, [[id]])
 
-    # Para crear o modificar un registro en el servidor destino, se necesita pasar como parametro un diccionario con los campos y 
+    # Para crear o modificar un registro en el servidor destino, se necesita pasar como parametro un diccionario con los campos y
     # valores del registro a crear o modificar. La funcion preparar_diccionario devuelve ese diccionario que se necesita para
     # crear o modificar un registro en el servidor destino.
     # obj: el objeto que se quiere crear o modificar en el servidor destino.
@@ -123,7 +123,7 @@ class Sinc_Base(models.Model):
         return dict
 
     # En el objeto que se desea copiar o modificar al servidor destino, pueden existir variables tipo One2many.
-    # La funcion preparar_campos_m2o devuelve un diccionario con los campos Many2one del objeto que se quiere copiar o modificar al 
+    # La funcion preparar_campos_m2o devuelve un diccionario con los campos Many2one del objeto que se quiere copiar o modificar al
     # servidor destino. Esta funcion es utilizada por la funcion sinc_pdv.base.preparar_diccionario()
     # obj: el objeto que se quiere crear o modificar en el servidor destino.
     def preparar_campos_m2o(self, conexion, obj, campos):
@@ -152,7 +152,7 @@ class Sinc_Base(models.Model):
                         agregar_linea = True
                         for estandar in campo[2]['estandar']:
                             dict_tempo[estandar] = line[estandar]
-                            
+
                         for m2o in campo[2]['m2o']:
                             sinc_obj = self.env[self.modelo_relacionado(m2o[1])]
                             id = self.buscar_destino(conexion, sinc_obj.res_model(), sinc_obj.filtro_buscar_destino(conexion, line[m2o[0]]))
@@ -184,7 +184,7 @@ class Sinc_Base(models.Model):
                             ids.append((4, id[0]))
                     dict[campo[0]] = ids
         return dict
-    
+
 
     # La funcion transferir revisa si el objeto que se quiere trasladar al servidor destino ya existe en el destino.
     # Si no existe, copia el objeto al servidor destino. Si existe, modifica el objeto en el servidor destino.
@@ -193,6 +193,7 @@ class Sinc_Base(models.Model):
     def transferir(self, conexion, obj):
         status = {}
         obj_id = self.buscar_destino(conexion, self.res_model(), self.filtro_buscar_destino(conexion, obj))
+        logging.getLogger('OBJ_ID').warn(obj_id)
         if not obj_id:
             logging.warn('CREAR')
             obj_dict = self.preparar_diccionario(conexion, obj, self.campos())
@@ -216,4 +217,3 @@ class Sinc_Base(models.Model):
     # La funcion retorna una lista. En la posicion 0 retorna la llave del origen, y en la posicion 1 retorna la llave del destino.
     def llaves(self):
         return ['id', 'sinc_id']
-

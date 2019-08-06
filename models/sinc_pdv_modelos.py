@@ -2,7 +2,7 @@
 
 from odoo import models, fields, api
 from odoo.exceptions import UserError
-import xmlrpclib
+#import xmlrpclib
 import datetime
 import urllib, base64
 import logging
@@ -12,7 +12,7 @@ from dateutil import parser
 # Este modulo utiliza el modulo complementario sinc_pdv_extra.
 
 # La clase Sinc_PDV_Location define funciones necesarias para la sincronizacion de ubicaciones.
-class Sinc_PDV_Ubicaciones(models.Model):
+class Sinc_PDV_Ubicaciones(models.AbstractModel):
     _name = 'sinc_pdv.stock.location'
     _inherit = 'sinc_pdv.base'
 
@@ -37,7 +37,7 @@ class Sinc_PDV_Ubicaciones(models.Model):
         return [('company_id', '=', 1), '|', ('active','=',True), ('active','=',False)]
 
 
-class Sinc_PDV_resolucion(models.Model):
+class Sinc_PDV_resolucion(models.AbstractModel):
     _name = 'sinc_pdv.pos_sat.resolucion'
     _inherit = 'sinc_pdv.base'
 
@@ -53,7 +53,7 @@ class Sinc_PDV_resolucion(models.Model):
         return [('name', '!=', '')]
 
 
-class Sinc_PDV_Clientes(models.Model):
+class Sinc_PDV_Clientes(models.AbstractModel):
     _name = 'sinc_pdv.res.partner'
     _inherit = 'sinc_pdv.base'
 
@@ -74,7 +74,7 @@ class Sinc_PDV_Clientes(models.Model):
         return [('company_id', '=', 1), ('id', 'in', partner_ids), '|', ('active','=',True), ('active','=',False)]
 
 
-class Sinc_PDV_Diarios(models.Model):
+class Sinc_PDV_Diarios(models.AbstractModel):
     _name = 'sinc_pdv.account.journal'
     _inherit = 'sinc_pdv.base'
 
@@ -83,7 +83,7 @@ class Sinc_PDV_Diarios(models.Model):
 
     def campos(self):
         dict = {}
-        dict['estandar'] = ['name', 'type', 'code', 'requiere_resolucion', 'clave_gface', 'tipo_documento_gface', 'serie_documento_gface', 'serie_gface', 'numero_resolucion_gface', 'fecha_resolucion_gface', 'rango_inicial_gface', 'rango_final_gface', 'numero_establecimiento_gface', 'dispositivo_gface', 'nombre_establecimiento_gface']
+        dict['estandar'] = ['name', 'type', 'code', 'requiere_resolucion']
         dict['m2o'] = [['direccion', 'res.partner']]
         return dict
 
@@ -105,7 +105,7 @@ class Sinc_PDV_Diarios(models.Model):
         if resolucion_id:
             self.modificar_destino(conexion, 'ir.sequence', secuencia_destino_id, {'resolucion_id': resolucion_id[0]})
 
-class Sinc_PDV_Categorias_PDV(models.Model):
+class Sinc_PDV_Categorias_PDV(models.AbstractModel):
     _name = 'sinc_pdv.pos.category'
     _inherit = 'sinc_pdv.base'
 
@@ -121,7 +121,7 @@ class Sinc_PDV_Categorias_PDV(models.Model):
     def filtro_base_origen(self):
         return []
 
-class Sinc_PDV_Categorias_Producto(models.Model):
+class Sinc_PDV_Categorias_Producto(models.AbstractModel):
     _name = 'sinc_pdv.product.category'
     _inherit = 'sinc_pdv.base'
 
@@ -130,7 +130,7 @@ class Sinc_PDV_Categorias_Producto(models.Model):
 
     def campos(self):
         dict = {}
-        dict['estandar'] = ['name', 'type']
+        dict['estandar'] = ['name']
         dict['m2o'] = [['parent_id', 'product.category']]
         return dict
 
@@ -138,7 +138,7 @@ class Sinc_PDV_Categorias_Producto(models.Model):
         return []
 
 
-class Sinc_PDV_Lista_Precios(models.Model):
+class Sinc_PDV_Lista_Precios(models.AbstractModel):
     _name = 'sinc_pdv.product.pricelist'
     _inherit = 'sinc_pdv.base'
 
@@ -147,16 +147,16 @@ class Sinc_PDV_Lista_Precios(models.Model):
 
     def campos(self):
         dict = {}
-        dict['estandar'] = ['active', 'name']
+        dict['estandar'] = ['name']
         dict['o2m'] = [['item_ids', 'product.pricelist.item', {'estandar': ['name', 'fixed_price', 'min_quantity', 'date_start', 'date_end'], 'm2o': [['product_tmpl_id', 'product.template']]}]]
         return dict
 
     def filtro_base_origen(self):
-#        return [('company_id', '=', 1), '|', ('active','=',True), ('active','=',False)]
+        # return ['|', ('active','=',True), ('active','=',False)]
         return []
 
 
-class Sinc_PDV_Punto_De_Venta(models.Model):
+class Sinc_PDV_Punto_De_Venta(models.AbstractModel):
     _name = 'sinc_pdv.pos.config'
     _inherit = 'sinc_pdv.base'
 
@@ -165,9 +165,9 @@ class Sinc_PDV_Punto_De_Venta(models.Model):
 
     def campos(self):
         dict = {}
-        dict['estandar'] = ['active', 'name', 'group_by', 'allow_discount', 'allow_price_change', 'takeout_option', 'ask_tag_number', 'tipo_impresora', 'iface_precompute_cash', 'iface_invoicing']
+        dict['estandar'] = ['active', 'name', 'group_by', 'allow_discount', 'allow_price_change', 'takeout_option', 'ask_tag_number', 'iface_precompute_cash', 'iface_invoicing']
         dict['m2o'] = [['journal_id', 'account.journal'], ['stock_location_id', 'stock.location'], ['invoice_journal_id', 'account.journal'], ['iface_start_categ_id', 'pos.category'], ['pricelist_id', 'product.pricelist']]
-        dict['m2m'] = [['journal_ids', 'account.journal'], ['categorias_id', 'product.category']]
+        dict['m2m'] = [['journal_ids', 'account.journal'], ['available_pricelist_ids', 'product.pricelist']]
         return dict
 
     def filtro_base_origen(self):
@@ -272,7 +272,7 @@ class Sinc_PDV_Punto_De_Venta(models.Model):
         return res
 
 
-class Sinc_PDV_Usuarios(models.Model):
+class Sinc_PDV_Usuarios(models.AbstractModel):
     _name = 'sinc_pdv.res.users'
     _inherit = 'sinc_pdv.base'
 
@@ -281,7 +281,7 @@ class Sinc_PDV_Usuarios(models.Model):
 
     def campos(self):
         dict = {}
-        dict['estandar'] = ['active', 'name', 'login', 'tz', 'notify_email', 'signature', 'barcode', 'pos_security_pin', 'password_crypt']
+        dict['estandar'] = ['active', 'name', 'login', 'tz', 'signature', 'barcode', 'pos_security_pin', 'password_crypt', 'notification_type']
         dict['m2o'] = [['default_pos_id', 'pos.config'], ['default_location_id', 'stock.location']]
         return dict
 
@@ -289,7 +289,7 @@ class Sinc_PDV_Usuarios(models.Model):
         return [('company_id', '=', 1), ('default_pos_id', '!=', False), '|', ('active','=',True), ('active','=',False)]
 
 
-class Sinc_PDV_Categorias_Unidades_Medida(models.Model):
+class Sinc_PDV_Categorias_Unidades_Medida(models.AbstractModel):
     _name = 'sinc_pdv.product.uom.categ'
     _inherit = 'sinc_pdv.base'
 
@@ -305,7 +305,7 @@ class Sinc_PDV_Categorias_Unidades_Medida(models.Model):
         return []
 
 
-class Sinc_PDV_Unidades_Medida(models.Model):
+class Sinc_PDV_Unidades_Medida(models.AbstractModel):
     _name = 'sinc_pdv.product.uom'
     _inherit = 'sinc_pdv.base'
 
@@ -322,7 +322,7 @@ class Sinc_PDV_Unidades_Medida(models.Model):
         return []
 
 
-class Sinc_PDV_Productos(models.Model):
+class Sinc_PDV_Productos(models.AbstractModel):
     _name = 'sinc_pdv.product.product'
     _inherit = 'sinc_pdv.base'
 
@@ -333,6 +333,7 @@ class Sinc_PDV_Productos(models.Model):
         dict = {}
         dict['estandar'] = ['active', 'name', 'sale_ok', 'purchase_ok', 'type', 'default_code', 'barcode', 'lst_price', 'standard_price', 'sale_delay', 'produce_delay', 'available_in_pos', 'to_weight', 'description_sale', 'description_purchase', 'description_picking']
         dict['m2o'] = [['categ_id', 'product.category'], ['pos_categ_id', 'pos.category'], ['uom_id', 'product.uom'], ['uom_po_id', 'product.uom']]
+        # dict['m2o'] = [['categ_id', 'product.category'], ['pos_categ_id', 'pos.category']]
         dict['m2m'] = [['taxes_id', 'account.tax'], ['supplier_taxes_id', 'account.tax']]
         return dict
 
@@ -353,7 +354,7 @@ class Sinc_PDV_Productos(models.Model):
         sinc_productos_tmpl_obj.modificar_destino(conexion, sinc_productos_tmpl_obj.res_model(), product_template_destino_id, {'sinc_id': product_origen.product_tmpl_id.id})
 
 
-class Sinc_PDV_ProductosTemplate(models.Model):
+class Sinc_PDV_ProductosTemplate(models.AbstractModel):
     _name = 'sinc_pdv.product.template'
     _inherit = 'sinc_pdv.base'
 
@@ -370,7 +371,7 @@ class Sinc_PDV_ProductosTemplate(models.Model):
         return [('company_id', '=', 1), '|', ('active','=',True), ('active','=',False)]
 
 
-class Sinc_PDV_Impuestos(models.Model):
+class Sinc_PDV_Impuestos(models.AbstractModel):
     _name = 'sinc_pdv.account.tax'
     _inherit = 'sinc_pdv.base'
 
@@ -385,7 +386,7 @@ class Sinc_PDV_Impuestos(models.Model):
         return ['name', 'name']
 
 
-class Sinc_PDV_Pos_Gt_Extra(models.Model):
+class Sinc_PDV_Pos_Gt_Extra(models.AbstractModel):
     _name = 'sinc_pdv.pos_gt.extra'
     _inherit = 'sinc_pdv.base'
 
@@ -402,7 +403,7 @@ class Sinc_PDV_Pos_Gt_Extra(models.Model):
         return [('company_id', '=', 1)]
 
 
-class Sinc_PDV_Lista_De_Materiales(models.Model):
+class Sinc_PDV_Lista_De_Materiales(models.AbstractModel):
     _name = 'sinc_pdv.mrp.bom'
     _inherit = 'sinc_pdv.base'
 
@@ -417,9 +418,10 @@ class Sinc_PDV_Lista_De_Materiales(models.Model):
         return dict
 
     def filtro_base_origen(self):
-        return [('company_id', '=', 1), '|', ('active','=',True), ('active','=',False)]
+        # return [('company_id', '=', 1), '|', ('active','=',True), ('active','=',False)]
+        return [('company_id', '=', 1)]
 
-class Sinc_PDV_Inventario(models.Model):
+class Sinc_PDV_Inventario(models.AbstractModel):
     _name = 'sinc_pdv.stock.inventory'
     _inherit = 'sinc_pdv.base'
 

@@ -19,7 +19,7 @@ class SincOrigenDestino(models.TransientModel):
     categorias_unidades_medida = fields.Boolean('Categorias de Uom')
     unidades_medida = fields.Boolean('Unidades de medida')
     productos = fields.Boolean('Productos')
-    productos_template = fields.Boolean('Productos Padre')
+#    productos_template = fields.Boolean('Productos Padre')
     pos_gt_extra = fields.Boolean('Extras')
     lista_materiales = fields.Boolean('Listas de materiales')
     ajuste_inicial = fields.Boolean('Ajustes iniciales')
@@ -41,7 +41,7 @@ class SincOrigenDestino(models.TransientModel):
         dict['categorias_unidades_medida'] = self.categorias_unidades_medida
         dict['unidades_medida'] = self.unidades_medida
         dict['productos'] = self.productos
-        dict['productos_template'] = self.productos_template
+#        dict['productos_template'] = self.productos_template
         dict['pos_gt_extra'] = self.pos_gt_extra
         dict['lista_materiales'] = self.lista_materiales
         dict['ajuste_inicial'] = self.ajuste_inicial

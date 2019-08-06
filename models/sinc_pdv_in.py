@@ -2,7 +2,7 @@
 
 from odoo import models, fields, api
 from odoo.exceptions import UserError
-import xmlrpclib
+import xmlrpc.client
 import time
 import urllib, base64
 import logging
@@ -10,15 +10,15 @@ import random
 from dateutil import parser
 
 
-class Sinc_PDV_in(models.Model):
+class Sinc_PDV_in(models.AbstractModel):
     _name = 'sinc_pdv.in'
     _inherit = 'sinc_pdv.base'
 
     @api.multi
     def iniciar_transferencia(self, conexion, model = '', obj = '', restante = 0):
-        common = xmlrpclib.ServerProxy('{}/xmlrpc/2/common'.format(conexion['url']))
+        common = xmlrpc.client.ServerProxy('{}/xmlrpc/2/common'.format(conexion['url']))
         conexion['uid'] = common.authenticate(conexion['database'], conexion['username'], conexion['password'], {})
-        conexion['models'] = xmlrpclib.ServerProxy('{}/xmlrpc/2/object'.format(conexion['url']))
+        conexion['models'] = xmlrpc.client.ServerProxy('{}/xmlrpc/2/object'.format(conexion['url']))
 
         logging.warn('INICIO SINCRONIZACION PDV IN '+str(restante))
         config_ids = self.buscar_destino(conexion, 'pos.config', [], {'order': 'sinc_date asc'})
@@ -38,11 +38,11 @@ class Sinc_PDV_in(models.Model):
             res2 = sinc_stock_inventory_obj.in_ajuste_inventario(conexion, config_ids[pos])
             logging.warn('FIN in_ajuste_inventario '+str(restante))
 
-            pos += 1
-
             if res1 == True or res2 == True:
                 self.modificar_destino(conexion, 'pos.config', config_ids[pos], {'sinc_date': time.strftime('%Y-%m-%d %H:%M:%S')})
                 procesado = True
+
+            pos += 1
 
         logging.getLogger('res1... '+str(restante)).warn(res1)
         logging.getLogger('res2... '+str(restante)).warn(res2)

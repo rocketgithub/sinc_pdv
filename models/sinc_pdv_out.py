@@ -2,7 +2,7 @@
 
 from odoo import models, fields, api
 from odoo.exceptions import UserError
-import xmlrpclib
+import xmlrpc.client
 import datetime
 import urllib, base64
 import logging
@@ -12,7 +12,7 @@ from dateutil import parser
 # Este modulo utiliza el modulo complementario sinc_pdv_extra.
 
 # La clase Sinc_PDV_out define funciones para especificamente trasnferir del servidor origen al servidor destino.
-class Sinc_PDV_out(models.Model):
+class Sinc_PDV_out(models.AbstractModel):
     _name = 'sinc_pdv.out'
     _inherit = 'sinc_pdv.base'
 
@@ -34,9 +34,9 @@ class Sinc_PDV_out(models.Model):
     # informacion desde el servidor origen hacia el servidor destino.
     @api.multi
     def iniciar_transferencia(self, conexion, transferencias):
-        common = xmlrpclib.ServerProxy('{}/xmlrpc/2/common'.format(conexion['url']))
+        common = xmlrpc.client.ServerProxy('{}/xmlrpc/2/common'.format(conexion['url']))
         conexion['uid'] = common.authenticate(conexion['database'], conexion['username'], conexion['password'], {})
-        conexion['models'] = xmlrpclib.ServerProxy('{}/xmlrpc/2/object'.format(conexion['url']))
+        conexion['models'] = xmlrpc.client.ServerProxy('{}/xmlrpc/2/object'.format(conexion['url']))
 
         logging.warn('INICIO SINCRONIZACION PDV')
         if transferencias['ubicaciones']:
@@ -63,9 +63,6 @@ class Sinc_PDV_out(models.Model):
             self.transferir_datos(conexion, 'product.uom')
         if transferencias['productos']:
             self.transferir_datos(conexion, 'product.product')
-#            sinc_v1_obj = self.env['sinc_pdv.v1']
-#            sinc_v1_obj._transferir_productos(conexion)
-        if transferencias['productos_template']:
             self.transferir_datos(conexion, 'product.template')
         if transferencias['pos_gt_extra']:
             self.transferir_datos(conexion, 'pos_gt.extra')
