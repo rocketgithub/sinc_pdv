@@ -1,5 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <odoo>
+<!--
         <record id="sinc_pdv.inherit_view_general_configuration" model="ir.ui.view">
             <field name="name">General Settings</field>
             <field name="model">base.config.settings</field>
@@ -19,4 +20,34 @@
                 </group>
             </field>
         </record>
+-->
+        
+    <record id="res_config_settings_view_form_sinc_pdv" model="ir.ui.view">
+        <field name="name">res.config.settings.view.form.inherit.sinc_pdv</field>
+        <field name="model">res.config.settings</field>
+        <field name="priority" eval="25"/>
+        <field name="inherit_id" ref="base.res_config_settings_view_form"/>
+        <field name="arch" type="xml">
+            <xpath expr="//div[hasclass('settings')]" position="inside">
+                <div class="app_settings_block" data-string="Sinc" string="Sinc" data-key="sinc" groups="purchase.group_purchase_manager">
+                    <h2>Sincronizacion!!!</h2>
+                    <div class="row mt16 o_settings_container" name="sinc_pdv_setting_container">
+                        <div class="col-12 col-lg-6 o_setting_box">
+                            <div class="o_setting_left_pane">
+                            </div>
+                            <div class="o_setting_right_pane">
+                                <field name="url"/>
+                                <field name="database"/>
+                                <field name="username"/>
+                                <field name="password"/>
+                                <button name="%(act_sinc_out)d" string="Sincronización Origen - Destino"
+                                    type="action" class="btn-primary"/>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </xpath>
+        </field>
+    </record>
+
 </odoo>

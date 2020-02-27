@@ -38,7 +38,7 @@
     <record model="ir.actions.act_window" id="act_sinc_out">
         <field name="name">Sincronizar Origen - Destino</field>
         <field name="res_model">sinc_pdv.sinc_origen_destino_wizard</field>
-        <field name="src_model">base.config.settings</field>
+        <field name="src_model">res.config.settings</field>
         <field name="view_mode">form</field>
         <field name="target">new</field>
     </record>

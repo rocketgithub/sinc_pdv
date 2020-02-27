@@ -2,7 +2,7 @@
 
 from odoo import models, fields, api
 from odoo.exceptions import UserError
-import xmlrpclib
+import xmlrpc.client
 import datetime
 import urllib, base64
 import logging
@@ -19,7 +19,7 @@ class Sinc_PDV_out(models.Model):
     def transferir_datos(self, conexion, res_model):
         sinc_obj = self.env[self.modelo_relacionado(res_model)]
         x = 1
-        for obj_origen in self.env[sinc_obj.res_model()].search(sinc_obj.filtro_base_origen(), order='id asc'):
+        for obj_origen in self.env[sinc_obj.res_model_origen()].search(sinc_obj.filtro_base_origen(), order='id asc'):
             logging.getLogger('No... ').warn(x)
             logging.getLogger('ID... ').warn(obj_origen.id)
             x += 1
@@ -34,9 +34,23 @@ class Sinc_PDV_out(models.Model):
     # informacion desde el servidor origen hacia el servidor destino.
     @api.multi
     def iniciar_transferencia(self, conexion, transferencias):
-        common = xmlrpclib.ServerProxy('{}/xmlrpc/2/common'.format(conexion['url']))
+        conexion1 = {
+            'url': 'http://soporte.solucionesprisma.com:5012', 
+            'password': 'melimarsa', 
+            'database': 'doce_melimar', 
+            'username': 'admin'
+        }
+        conexion2 = {
+            'url': 'http://soporte.solucionesprisma.com:8112', 
+            'password': '12345', 
+            'database': 'docerodolfo_guateburger', 
+            'username': 'rborst@gmail.com'
+        }
+        conexion1 = conexion2
+
+        common = xmlrpc.client.ServerProxy('{}/xmlrpc/2/common'.format(conexion['url']))
         conexion['uid'] = common.authenticate(conexion['database'], conexion['username'], conexion['password'], {})
-        conexion['models'] = xmlrpclib.ServerProxy('{}/xmlrpc/2/object'.format(conexion['url']))
+        conexion['models'] = xmlrpc.client.ServerProxy('{}/xmlrpc/2/object'.format(conexion['url']))
 
         logging.warn('INICIO SINCRONIZACION PDV')
         if transferencias['ubicaciones']:
@@ -58,13 +72,11 @@ class Sinc_PDV_out(models.Model):
         if transferencias['usuarios']:
             self.transferir_datos(conexion, 'res.users')
         if transferencias['categorias_unidades_medida']:
-            self.transferir_datos(conexion, 'product.uom.categ')
+            self.transferir_datos(conexion, 'uom.category')
         if transferencias['unidades_medida']:
-            self.transferir_datos(conexion, 'product.uom')
+            self.transferir_datos(conexion, 'uom.uom')
         if transferencias['productos']:
             self.transferir_datos(conexion, 'product.product')
-#            sinc_v1_obj = self.env['sinc_pdv.v1']
-#            sinc_v1_obj._transferir_productos(conexion)
         if transferencias['productos_template']:
             self.transferir_datos(conexion, 'product.template')
         if transferencias['pos_gt_extra']:

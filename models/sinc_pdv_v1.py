@@ -2,7 +2,7 @@
 
 from odoo import models, fields, api
 from odoo.exceptions import UserError
-import xmlrpclib
+#import xmlrpclib
 import datetime
 import urllib, base64
 import logging

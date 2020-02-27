@@ -3,14 +3,19 @@
 from odoo import api, fields, models
 import logging
 
-class BaseConfigSettings(models.TransientModel):
 
+class ResConfigSettings(models.TransientModel):
     _inherit = 'res.config.settings'
 
-    url = fields.Char('URL', default='http://50.116.34.232')
-    database = fields.Char('Base de datos destino', default='grupor2c')
-    username = fields.Char('Usuario', default='admin')
-    password = fields.Char('Contraseña', default='guateburgersa')
+#    url = fields.Char('URL', default='http://50.116.34.232')
+#    database = fields.Char('Base de datos destino', default='grupor2c')
+#    username = fields.Char('Usuario', default='admin')
+#    password = fields.Char('Contraseña', default='guateburgersa')
+
+    url = fields.Char('URL', default='http://soporte.solucionesprisma.com:8012', config_parameter='sinc.url')
+    database = fields.Char('Base de datos destino', default='docerodolfo_guateburger', config_parameter='sinc.database')
+    username = fields.Char('Usuario', default='rborst@gmail.com', config_parameter='sinc.username')
+    password = fields.Char('Contraseña', default='12345', config_parameter='sinc.password')
 
     @api.model
     def get_default_url(self, fields):
@@ -59,6 +64,7 @@ class BaseConfigSettings(models.TransientModel):
         dict['database'] = self.env["ir.config_parameter"].get_param("sinc.database")
         dict['username'] = self.env["ir.config_parameter"].get_param("sinc.username")
         dict['password'] = self.env["ir.config_parameter"].get_param("sinc.password")
+        logging.getLogger('dict').warn(dict)
         return dict
 
     def sincronizacion_out(self, transferencias = {}):
