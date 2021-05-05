@@ -38,6 +38,7 @@ class Sinc_Base(models.Model):
     # res_model: modelo del cual se va a crear el registro.
     # datos: datos para crear el registro.
     def crear_destino(self, conexion, res_model, datos):
+        logging.warn(datos)
         obj_id = conexion['models'].execute_kw(conexion['database'], conexion['uid'], conexion['password'], res_model, 'create', [datos])
         return obj_id
 
@@ -45,6 +46,7 @@ class Sinc_Base(models.Model):
     # res_model: modelo del cual se va a modificar el registro.
     # ids: lista con ids a modificar del modelo.
     def modificar_destino(self, conexion, res_model, id, datos):
+        logging.warn(datos)
         conexion['models'].execute_kw(conexion['database'], conexion['uid'], conexion['password'], res_model, 'write', [[id], datos])
 
     # La funcion eliminar_destino elimina uno o varios registros del servidor destino.
@@ -57,11 +59,12 @@ class Sinc_Base(models.Model):
     def filtro_buscar_destino(self, conexion, obj):
         filtro = []
         filtro.append([self.llaves()[1], '=', obj[self.llaves()[0]]])
-        if 1 and 'estandar' in self.campos() and 'active' in self.campos()['estandar']:
+        if ('estandar' in self.campos() and 'active' in self.campos()['estandar']) or self.res_model_origen() == 'res.users':
            filtro.append(['company_id', '=', 1])
            filtro.append('|')
            filtro.append(['active','=',True])
            filtro.append(['active','=',False])
+        logging.warn(filtro)
         return filtro
 
     # La funcion buscar_destino devuelve un array de ids, como resultado de una busqueda en el servidor destino.

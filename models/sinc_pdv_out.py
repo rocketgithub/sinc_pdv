@@ -34,19 +34,6 @@ class Sinc_PDV_out(models.Model):
     # informacion desde el servidor origen hacia el servidor destino.
     @api.multi
     def iniciar_transferencia(self, conexion, transferencias):
-        conexion1 = {
-            'url': 'http://soporte.solucionesprisma.com:5012', 
-            'password': 'melimarsa', 
-            'database': 'doce_melimar', 
-            'username': 'admin'
-        }
-        conexion2 = {
-            'url': 'http://soporte.solucionesprisma.com:8112', 
-            'password': '12345', 
-            'database': 'docerodolfo_guateburger', 
-            'username': 'rborst@gmail.com'
-        }
-        conexion1 = conexion2
 
         common = xmlrpc.client.ServerProxy('{}/xmlrpc/2/common'.format(conexion['url']))
         conexion['uid'] = common.authenticate(conexion['database'], conexion['username'], conexion['password'], {})

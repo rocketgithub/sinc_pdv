@@ -31,7 +31,8 @@ class Sinc_PDV_Ubicaciones(models.Model):
     # dict['m2m']:
     def campos(self):
         dict = {}
-        dict['estandar'] = ['active', 'name', 'usage', 'scrap_location', 'return_location', 'posx', 'posy', 'posz', 'barcode']
+        dict['estandar'] = ['active', 'name', 'usage', 'scrap_location', 'return_location', 'posx', 'posy', 'posz']
+#        dict['estandar'] = ['active', 'name', 'usage', 'scrap_location', 'return_location', 'posx', 'posy', 'posz', 'barcode']
         dict['m2o'] = [['location_id', 'stock.location']]
         return dict
 
@@ -202,6 +203,7 @@ class Sinc_PDV_Punto_De_Venta(models.Model):
     def in_crear_pedido(self, conexion, config_id):
         logging.getLogger('config_id').warn(config_id)
         sesion_ids = self.buscar_destino(conexion, 'pos.session', [['config_id', '=', config_id], ['sinc_id', '=', 0], ['state', '=', 'closed']], {'order': 'stop_at asc'})
+#        sesion_ids = [36714]
         logging.getLogger('SESION_IDS ...').warn(sesion_ids)
         res = False
         if sesion_ids:
@@ -211,6 +213,7 @@ class Sinc_PDV_Punto_De_Venta(models.Model):
                 pos_config_destino = self.leer_destino(conexion, 'pos.config', [sesion_destino['config_id'][0]])
                 pos_config_origen = self.env['pos.config'].search([('id', '=', pos_config_destino[0]['sinc_id'])])[0]
                 sesion_origen_id = self.env['pos.session'].create({'name': sesion_destino['name'], 'config_id': pos_config_origen.id})
+                logging.warn(sesion_destino['name'])
                 sesion_origen_id.write({'name': sesion_destino['name']})
                 sesion_origen_id.action_pos_session_open()
 
@@ -236,6 +239,8 @@ class Sinc_PDV_Punto_De_Venta(models.Model):
                             'product_id': lineas_pedido[key]['product_id'],
                             'price_unit': lineas_pedido[key]['price_unit'],
                             'qty': lineas_pedido[key]['qty'],
+                            'price_subtotal_incl': 0,
+                            'price_subtotal': 0,
                         }))
 
                     nombre_primera_factura = ''
@@ -262,8 +267,20 @@ class Sinc_PDV_Punto_De_Venta(models.Model):
                         'session_id': sesion_origen_id.id,
                         'date_order': sesion_destino['start_at'],
                         'partner_id': pos_config_origen.default_client_id.id,
+                        'amount_tax': 0,
+                        'amount_total': 0,
+                        'amount_paid': 0,
+                        'amount_return': 0,
                         'lines': lineas,
                     })
+                    
+                    for linea in obj.lines:
+                        price_unit = linea.price_unit
+                        linea._onchange_product_id()
+                        linea.price_unit = price_unit
+                        linea._compute_amount_line_all()
+                        
+                    obj._onchange_amount_all()
 
                     logging.getLogger('ordenes_destino_ids... ').warn(ordenes_destino_ids)
                     pagos_destino_ids = self.buscar_destino(conexion, 'account.bank.statement.line', [['pos_statement_id', 'in', ordenes_destino_ids]])
@@ -319,11 +336,11 @@ class Sinc_PDV_Usuarios(models.Model):
         dict = {}
 #        dict['estandar'] = ['name', 'login', 'tz', 'notify_email', 'signature', 'barcode', 'pos_security_pin', 'password_crypt']
         dict['estandar'] = ['name', 'login', 'tz', 'signature', 'barcode', 'pos_security_pin']
-        dict['m2o'] = [['default_pos_id', 'pos.config'], ['default_location_id', 'stock.location']]
+        dict['m2o'] = [['default_pos_id', 'pos.config']]
         return dict
 
     def filtro_base_origen(self):
-        return [('company_id', '=', 1), ('default_pos_id', '!=', False), '|', ('active','=',True), ('active','=',False)]
+        return [('id','!=', 1), ('company_id', '=', 1), ('default_pos_id', '!=', False), '|', ('active','=',True), ('active','=',False)]
 
 
 class Sinc_PDV_Categorias_Unidades_Medida(models.Model):
@@ -384,7 +401,7 @@ class Sinc_PDV_Productos(models.Model):
         return dict
 
     def filtro_base_origen(self):
-        return [('company_id', '=', 1), ('id','!=',1390), '|', ('active','=',True), ('active','=',False)]
+        return [('company_id', '=', 1), ('id','>',1500), ('id','!=',1390), '|', ('active','=',True), ('active','=',False)]
 
     def transferir(self, conexion, producto_origen):
         status_transferir = super(Sinc_PDV_Productos, self).transferir(conexion, producto_origen)
@@ -417,7 +434,7 @@ class Sinc_PDV_ProductosTemplate(models.Model):
         return dict
 
     def filtro_base_origen(self):
-        return [('company_id', '=', 1), ('id','!=',1412), '|', ('active','=',True), ('active','=',False)]
+        return [('company_id', '=', 1), ('id','>',1500), ('id','!=',1412), '|', ('active','=',True), ('active','=',False)]
 
 
 class Sinc_PDV_Impuestos(models.Model):
@@ -572,23 +589,24 @@ class Sinc_PDV_Inventario(models.Model):
                         dict['filter'] = 'partial'
                         dict['cuenta_analitica_id'] = analytic_account_id
                         line_ids = []
-                        for linea in self.leer_destino(conexion, 'stock.inventory.line', [inventario_destino['line_ids']]):
-                            producto_destino = self.leer_destino(conexion, 'product.product', [linea['product_id'][0]], extras = {'fields': ['sinc_id', 'product_tmpl_id']})
-                            producto_origen = self.env['product.product'].search([('id', '=', producto_destino[0]['sinc_id']), '|', ('active','=',True), ('active','=',False)])[0]
+                        if inventario_destino['line_ids']:
+                            for linea in self.leer_destino(conexion, 'stock.inventory.line', [inventario_destino['line_ids']]):
+                                producto_destino = self.leer_destino(conexion, 'product.product', [linea['product_id'][0]], extras = {'fields': ['sinc_id', 'product_tmpl_id']})
+                                producto_origen = self.env['product.product'].search([('id', '=', producto_destino[0]['sinc_id']), '|', ('active','=',True), ('active','=',False)])[0]
 
-                            line_ids.append((0, 0, {
-                                'location_id': ubicacion_origen.id,
-                                'product_id': producto_origen.id,
-                                'product_qty': linea['product_qty'] if linea['product_qty'] >= 0 else 0,
-                            }))
-                            dict['line_ids'] = line_ids
+                                line_ids.append((0, 0, {
+                                    'location_id': ubicacion_origen.id,
+                                    'product_id': producto_origen.id,
+                                    'product_qty': linea['product_qty'] if linea['product_qty'] >= 0 else 0,
+                                }))
+                                dict['line_ids'] = line_ids
 
-                        obj = self.env['stock.inventory'].create(dict)
-                        obj.write({'date': inventario_destino['date']})
-                        logging.warn('action_start')
-                        obj.action_start()
-                        logging.warn('action_done')
-                        obj.action_done()
-                        self.modificar_destino(conexion, 'stock.inventory', inventario_destino['id'], {'sinc_id': obj.id})
-                        res = True
+                            obj = self.env['stock.inventory'].create(dict)
+                            obj.write({'date': inventario_destino['date']})
+                            logging.warn('action_start')
+                            obj.action_start()
+                            logging.warn('action_done')
+                            obj.action_validate()
+                            self.modificar_destino(conexion, 'stock.inventory', inventario_destino['id'], {'sinc_id': obj.id})
+                            res = True
         return res
